@@ -17,6 +17,8 @@ DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_int32(interval_ms, 1000, "Milliseconds between consecutive requests");
 DEFINE_int32(each_request_msgid_num, 10, "Each request msgid num");
+DEFINE_int32(change_logid, 0, "Change logid");
+DEFINE_int32(unchange_user_id, 10, "Change logid");
 
 int main(int argc, char* argv[]) {
   tinyim::Initialize init(argc, &argv);
@@ -41,18 +43,24 @@ int main(int argc, char* argv[]) {
       brpc::Controller cntl;
 
       auto user_and_id_num = request.add_user_ids();
-      int user_id = std::rand();
-      LOG(INFO) << "Requesting user_id=" << user_id << " msgid num=" << FLAGS_each_request_msgid_num;
+      int user_id = std::rand() % 10 + 1;
+      LOG(INFO) << "Requesting user_id=" << user_id << " msgid num="
+                << FLAGS_each_request_msgid_num;
       user_and_id_num->set_need_msgid_num(FLAGS_each_request_msgid_num);
       user_and_id_num->set_user_id(user_id);
 
       user_and_id_num = request.add_user_ids();
-      user_id = std::rand();
-      LOG(INFO) << "Requesting user_id=" << user_id << " msgid num=" << FLAGS_each_request_msgid_num;
-      user_and_id_num->set_user_id(user_id);
+      LOG(INFO) << "Requesting user_id=" << FLAGS_unchange_user_id <<
+                   " msgid num=" << FLAGS_each_request_msgid_num;
+      user_and_id_num->set_user_id(FLAGS_unchange_user_id);
       user_and_id_num->set_need_msgid_num(FLAGS_each_request_msgid_num);
 
-      cntl.set_log_id(log_id++);  // set by user
+      if (FLAGS_change_logid){
+        cntl.set_log_id(log_id++);  // set by user
+      }
+      else{
+        cntl.set_log_id(log_id);  // set by user
+      }
       LOG(INFO) << "log id=" << log_id;
 
       stub.IdGenerate(&cntl, &request, &reply, nullptr);

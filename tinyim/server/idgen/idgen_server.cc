@@ -50,6 +50,9 @@ class IdGenServiceImpl final : public IdGenService {
           pmsg_id->set_user_id(user_id);
           pmsg_id->set_start_msg_id(start_msgid);
           pmsg_id->set_msg_id_num(need_msgid_num);
+          LOG(INFO) << "Replying userid=" << user_id
+                    << " start_msg_id=" << start_msgid
+                    << " need_msgid_num=" << need_msgid_num;
         }
         else{
           cntl->SetFailed(status.ToString());
