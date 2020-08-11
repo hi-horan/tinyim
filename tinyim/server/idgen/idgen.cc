@@ -38,7 +38,6 @@ class LevelDbIdGen final : public IdGen{
     leveldb::Status status;
 
     std::unique_lock<butil::Mutex> ul(mutex_[bucket]);
-    auto iter = id_cache.find(user_id);
     int64_t& original_id = id_cache[user_id];
     if (original_id == 0){
       std::string db_id;
@@ -92,5 +91,7 @@ IdGen* IdGen::Default(){
   id_gen->Init();
   return id_gen;
 }
+
+IdGen::~IdGen() {}
 
 }  // namespace tinyim

@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp",
+        "unordered_map": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "numeric": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "tuple": "cpp",
+        "valarray": "cpp"
+    },
+    "C_Cpp.intelliSenseCacheSize": 0,
+    "C_Cpp.intelliSenseCachePath": "/tmp"
+}

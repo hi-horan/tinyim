@@ -1,8 +1,6 @@
 #ifndef TINYIM_IDGEN_IDGEN_H_
 #define TINYIM_IDGEN_IDGEN_H_
 
-#include <list>
-
 #include <leveldb/status.h>
 
 

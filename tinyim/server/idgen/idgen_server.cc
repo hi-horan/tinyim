@@ -1,6 +1,6 @@
 
-#include "idgen.pb.h"
 #include "idgen/idgen.h"
+#include "idgen.pb.h"
 
 #include <brpc/server.h>
 #include <glog/logging.h>
@@ -11,7 +11,7 @@
 namespace tinyim{
 
 class IdGenServiceImpl final : public IdGenService {
-
+ public:
   IdGenServiceImpl(IdGen* id_gen):id_gen_(id_gen) {};
   virtual ~IdGenServiceImpl() {};
 
