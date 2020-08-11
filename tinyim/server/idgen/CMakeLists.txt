@@ -72,6 +72,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno
 # include_directories(${OPENSSL_INCLUDE_DIR})
 # find_package(OpenSSL)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS} -O0 -g -pipe -Wall -W -fPIC -fstrict-aliasing -Wno-invalid-offsetof -Wno-unused-parameter -fno-omit-frame-pointer")
+
 add_executable(idgen_server idgen_server.cc idgen.cc ${PROTO_SRC} ${PROTO_HEADER})
 # add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
 
@@ -102,8 +104,10 @@ target_link_libraries(${PROJECT_NAME}
         ${BRPC_LIB}
         ${PROTOBUF_LIBRARIES}
         ${GFLAGS_LIBRARIES}
+        OpenSSL::SSL
         glog::glog
         leveldb::leveldb
         tinyim::util
+        dl
 )
 # target_link_libraries(idgen_client ${BRPC_LIB} ${DYNAMIC_LIB})
