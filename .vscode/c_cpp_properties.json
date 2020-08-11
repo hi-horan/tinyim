@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/tmp/build",
+                "/tmp/build/tinyim/server/idgen",
                 "~/projects/incubator-brpc/zbuild/output/include",
                 "/usr/include",
                 "/usr/local/include"

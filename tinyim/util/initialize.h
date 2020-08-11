@@ -4,8 +4,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-// #include <stdlib.h>
-// #include <time.h>
+#include <cstdlib>
+#include <ctime>
 
 namespace tinyim {
 
@@ -35,7 +35,7 @@ class Initialize final {
 
     LOG(INFO) << "Initialize";
 
-    // srand(time(nullptr));
+    std::srand(std::time(nullptr));
 
     // if (::signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
       // LOG(WARNING) << "set sigpipe to sig_ign error";

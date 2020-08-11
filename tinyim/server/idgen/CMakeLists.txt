@@ -48,7 +48,6 @@ endif()
 # endif()
 
 # set(CMAKE_CPP_FLAGS "${DEFINE_CLOCK_GETTIME} -DGFLAGS_NS=${GFLAGS_NS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer")
 
 # if(CMAKE_VERSION VERSION_LESS "3.1.3")
     # if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -72,7 +71,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno
 # include_directories(${OPENSSL_INCLUDE_DIR})
 # find_package(OpenSSL)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS} -O0 -g -pipe -Wall -W -fPIC -fstrict-aliasing -Wno-invalid-offsetof -Wno-unused-parameter -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS} -pipe -fstrict-aliasing -Wno-invalid-offsetof")
 
 add_executable(idgen_server idgen_server.cc idgen.cc ${PROTO_SRC} ${PROTO_HEADER})
 # add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
@@ -111,3 +111,26 @@ target_link_libraries(${PROJECT_NAME}
         dl
 )
 # target_link_libraries(idgen_client ${BRPC_LIB} ${DYNAMIC_LIB})
+
+add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
+
+target_include_directories(idgen_client
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/..
+        ${PROJECT_SOURCE_DIR}/../..
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${BRPC_INCLUDE_PATH}
+        ${GFLAGS_INCLUDE_PATH}
+)
+
+target_link_libraries(idgen_client
+    PUBLIC
+        ${BRPC_LIB}
+        ${PROTOBUF_LIBRARIES}
+        ${GFLAGS_LIBRARIES}
+        OpenSSL::SSL
+        glog::glog
+        leveldb::leveldb
+        tinyim::util
+        dl
+)
