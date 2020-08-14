@@ -107,7 +107,7 @@ target_link_libraries(${PROJECT_NAME}
         OpenSSL::SSL
         glog::glog
         leveldb::leveldb
-        tinyim::util
+        # tinyim::util
         dl
 )
 # target_link_libraries(idgen_client ${BRPC_LIB} ${DYNAMIC_LIB})
@@ -131,6 +131,6 @@ target_link_libraries(idgen_client
         OpenSSL::SSL
         glog::glog
         leveldb::leveldb
-        tinyim::util
+        # tinyim::util
         dl
 )

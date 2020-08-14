@@ -86,10 +86,21 @@ class LevelDbIdGen final : public IdGen{
   //                 user_id  msg_id
 };
 
+namespace {
+
+std::once_flag idgen_once_flag;
+IdGen *g_idgen = nullptr;
+
+}
+
 IdGen* IdGen::Default(){
-  LevelDbIdGen* id_gen =  new LevelDbIdGen;
-  id_gen->Init();
-  return id_gen;
+  // LevelDbIdGen* id_gen =  new LevelDbIdGen;
+  std::call_once(idgen_once_flag, []{
+    LevelDbIdGen *idgen = new LevelDbIdGen;
+    idgen->Init();
+    g_idgen = idgen;
+  });
+  return g_idgen;
 }
 
 IdGen::~IdGen() {}

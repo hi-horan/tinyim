@@ -27,7 +27,7 @@ find_package(OpenSSL REQUIRED)
 message("project_source_dir: ${PROJECT_SOURCE_DIR}")
 message("cmake_current_binary_dir: ${CMAKE_CURRENT_BINARY_DIR}")
 
-add_subdirectory(tinyim/util)
+# add_subdirectory(tinyim/util)
 # add_subdirectory(tinyim/codec)
 # add_subdirectory(tinyim/server/access)
 # add_subdirectory(tinyim/server/sso)
