@@ -1,0 +1,89 @@
+syntax = "proto3";
+package tinyim;
+
+option cc_generic_services = true;
+
+enum MsgType {
+    SINGLE = 0;
+    GROUP = 1;
+}
+
+message NewMsg {
+    int64 user_id = 1;
+    int64 peer_id = 2;
+    MsgType msg_type = 4;
+    string message = 5;
+
+    int32 timestamp = 6;
+}
+
+message Msg {
+    int64 user_id = 1;
+    int64 peer_id = 2;
+
+    int64 msg_id = 3;
+    MsgType msg_type = 5;
+    string message = 4;
+
+    int32 timestamp = 6;
+}
+
+message Msgs{
+    repeated Msg msg = 1;
+}
+
+message MsgReply {
+    int64 user_id = 1;
+    int64 msg_id = 3;
+
+    int64 last_msg_id = 4;
+    int32 timestamp = 2;
+
+    // more data
+}
+
+message Ping {
+    int64 user_id = 1;
+}
+
+message Pong {
+    int64 last_msg_id = 1;
+    // more data
+}
+
+enum DataType {
+    NONE = 0;
+    MESSAGE = 1;
+    ADDUSER = 2;
+    REMOVEUSER = 3;
+
+    ADDGROUP = 4;
+    REMOVEGROUP = 5;
+    // ...
+}
+
+message PullReply{
+    DataType data_type = 1;
+    oneof reply_type {
+        Msgs msgs = 2;
+    }
+
+}
+
+service AccessService {
+    // Register
+    // Signin
+
+    // rpc GroupIn()
+    // rpc GroupOut()
+
+    // rpc
+
+
+    rpc SendMsg(NewMsg) returns (MsgReply);
+    rpc PullData(Ping) returns (PullReply);
+
+    // rpc CreateStream(Ping) returns (Pong);
+
+    rpc HeartBeat(Ping) returns (Pong);
+}

@@ -71,8 +71,8 @@ endif()
 # include_directories(${OPENSSL_INCLUDE_DIR})
 # find_package(OpenSSL)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer")
-set(CMAKE_CXX_FLAGS "${CMAKE_CPP_FLAGS} -pipe -fstrict-aliasing -Wno-invalid-offsetof")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -fstrict-aliasing -Wno-invalid-offsetof")
 
 add_executable(idgen_server idgen_server.cc idgen.cc ${PROTO_SRC} ${PROTO_HEADER})
 # add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})

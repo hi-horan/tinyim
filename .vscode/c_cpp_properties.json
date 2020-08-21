@@ -4,10 +4,12 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/horan/projects/leveldb/include",
-                "/home/horan/projects/leveldb",
-                "/home/horan/virtualboxcache/build",
-                "~/projects/incubator-brpc/zbuild/output/include",
+                "${workspaceFolder}/tinyim",
+                "~/projects/leveldb/include",
+                "~/projects/leveldb",
+                "${workspaceFolder}/../build/tinyim/server",
+                "${workspaceFolder}/../build/tinyim/server/access",
+                "~/projects/incubator-brpc/src",
                 "/usr/include",
                 "/usr/local/include"
             ],
@@ -15,7 +17,10 @@
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
             "cppStandard": "c++14",
-            "intelliSenseMode": "clang-x64"
+            "intelliSenseMode": "clang-x64",
+            "browse": {
+                "databaseFilename": "${workspaceFolder}/../cache/${workspaceFolderBasename}/.vscode/browse.vc.db"
+            }
         }
     ],
     "version": 4
