@@ -1,10 +1,14 @@
 #include "access/access.pb.h"
 
+#include <iostream>
+
 #include <gflags/gflags.h>
 #include <brpc/channel.h>
 #include <bthread/bthread.h>
+#include <bthread/unstable.h>
 #include <brpc/stream.h>
 #include <butil/logging.h>
+#include <butil/time.h>
 
 #include "linenoise.h"
 #include "type.h"
@@ -95,27 +99,25 @@ void* PullData(void *arg){
   return nullptr;
 }
 
-void* SendHeartBeat(void* arg){
-  auto pchannel = static_cast<brpc::Channel*>(arg);
-  static const uint64_t sleep_time_s = FLAGS_internal_send_heartbeat_s * 1000 * 1000;
+// void* SendHeartBeat(void* arg){
+  // auto pchannel = static_cast<brpc::Channel*>(arg);
+  // static const uint64_t sleep_time_s = FLAGS_internal_send_heartbeat_s * 1000 * 1000;
 
-  brpc::Controller cntl;
-  tinyim::Ping ping;
-  ping.set_user_id(user_id);
-  tinyim::Pong pong;
-  auto msg_last_msg_id = pong.msg_last_msg_id();
-  tinyim::AccessService_Stub stub(pchannel);
-  stub.HeartBeat(&cntl, &ping, &ping, nullptr);
-  if (cntl.Failed()){
-    LOG(ERROR) << "Fail to call heartbeat. " << cntl.ErrorText();
-    return nullptr;
-  }
-  else{
-    bthread_usleep(sleep_time_s);
-  }
-
-
-}
+  // brpc::Controller cntl;
+  // tinyim::Ping ping;
+  // ping.set_user_id(user_id);
+  // tinyim::Pong pong;
+  // auto msg_last_msg_id = pong.msg_last_msg_id();
+  // tinyim::AccessService_Stub stub(pchannel);
+  // stub.HeartBeat(&cntl, &ping, &ping, nullptr);
+  // if (cntl.Failed()){
+    // LOG(ERROR) << "Fail to call heartbeat. " << cntl.ErrorText();
+    // return nullptr;
+  // }
+  // else{
+    // bthread_usleep(sleep_time_s);
+  // }
+// }
 
 // class StreamReceiveHandler: public brpc::StreamInputHandler{
   // virtual int on_received_messages(brpc::StreamId id,
@@ -138,15 +140,18 @@ void* SendHeartBeat(void* arg){
   // }
 // };
 
+// FIXME maybe need lock
 struct HeartBeatArg{
   brpc::Channel* channel;
   tinyim::UserId user_id;
   MsgId cur_user_id;
+  bthread_timer_t heartbeat_timeout_id;
 };
 
 void HeartBeatTimeOutHeadler(void* arg){
+  DLOG(INFO) << "Running heartbeat send";
   const auto parg = static_cast<HeartBeatArg*>(arg);
-  parg->channel;
+  // parg->channel;
   brpc::Controller cntl;
   tinyim::Ping ping;
   ping.set_user_id(parg->user_id);
@@ -163,8 +168,13 @@ void HeartBeatTimeOutHeadler(void* arg){
     if (last_msg_id > parg->cur_user_id){
       // TODO pull msg
     }
-
   }
+  const int64_t cur_time_us = butil::gettimeofday_us();
+  static const int64_t heartbeat_timeout_us = FLAGS_internal_send_heartbeat_s * 1000000;
+  bthread_timer_add(&(parg->heartbeat_timeout_id),
+                    butil::microseconds_to_timespec(cur_time_us + heartbeat_timeout_us),
+                    tinyim::HeartBeatTimeOutHeadler,
+                    arg);
 }
 
 // class Client{
@@ -239,10 +249,11 @@ int main(int argc, char* argv[]) {
       // LOG(ERROR) << "Fail to CreateStream, " << stream_cntl.ErrorText();
       // return -1;
   // }
-  bthread_timer_t heartbeat_timeout_id;
-  tinyim::HeartBeatArg heartbeatarg = {&channel, user_id};
+  tinyim::MsgId cur_msg_id = 0;
+
+  tinyim::HeartBeatArg heartbeatarg = {&channel, user_id, cur_msg_id, 0};
   static const int64_t heartbeat_timeout_us = FLAGS_internal_send_heartbeat_s * 1000000;
-  bthread_timer_add(&heartbeat_timeout_id,
+  bthread_timer_add(&heartbeatarg.heartbeat_timeout_id,
                     butil::microseconds_to_timespec(heartbeat_timeout_us),
                     tinyim::HeartBeatTimeOutHeadler,
                     &heartbeatarg);
@@ -279,11 +290,12 @@ int main(int argc, char* argv[]) {
       tinyim::MsgReply msg_reply;
       tinyim::AccessService_Stub stub(&channel);
 
-      bthread_timer_del(heartbeat_timeout_id);
+      bthread_timer_del(heartbeatarg.heartbeat_timeout_id);
 
       LOG(INFO) << "Calling SendMsg";
       // TODO should be async
       stub.SendMsg(&cntl, &new_msg, &msg_reply, nullptr);
+
       if (cntl.Failed()){
         LOG(ERROR) << "Fail to SendMsg, " << cntl.ErrorText();
         return -1;
@@ -292,6 +304,21 @@ int main(int argc, char* argv[]) {
                 << " msgid=" << msg_reply.msg_id()
                 << " last_msg_id=" << msg_reply.last_msg_id()
                 << " timestamp=" << msg_reply.timestamp();
+
+      cur_msg_id = msg_reply.msg_id();
+      heartbeatarg.cur_user_id = cur_msg_id;
+      if (msg_reply.last_msg_id() > cur_msg_id){
+        // TODO need pull msg
+      }
+      const int64_t cur_time_us = butil::gettimeofday_us();
+      bthread_timer_add(&heartbeatarg.heartbeat_timeout_id,
+                        butil::microseconds_to_timespec(cur_time_us + heartbeat_timeout_us),
+                        tinyim::HeartBeatTimeOutHeadler,
+                        &heartbeatarg);
+
+
+
+
 
       linenoiseHistoryAdd(line);
       linenoiseHistorySave("history.txt");
@@ -306,14 +333,17 @@ int main(int argc, char* argv[]) {
       printf("Unreconized command: %s\n", line);
     }
     free(line);
-
-    bthread_timer_add(&heartbeat_timeout_id,
-                      butil::microseconds_to_timespec(heartbeat_timeout_us),
-                      HeartBeatTimeOutHeadler,
-                      &heartbeatarg);
-
   }
 
   LOG(INFO) << "access_client is going to quit";
   return 0;
 }
+
+// static int fastio = []() {
+    // #define endl '\n'
+    // std::ios::sync_with_stdio(false);
+    // std::cin.tie(NULL);
+    // std::cout.tie(0);
+    // return 0;
+// }();
+

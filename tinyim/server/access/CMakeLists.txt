@@ -23,6 +23,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof"
 
 add_executable(${PROJECT_NAME}
     access.cc
+    ../../util/consistent_hash.h
 
     ${PROTO_SRC}
     ${PROTO_HEADER}
