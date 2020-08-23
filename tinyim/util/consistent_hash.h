@@ -3,6 +3,7 @@
 
 // reference https://github.com/ioriiod0/consistent_hash
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -21,6 +22,7 @@ struct vnode_t {
   int node_id;
   int vnode_id;
 };
+
 }  // namespace tinyim
 
 namespace std {
@@ -30,6 +32,23 @@ uint32_t operator()(tinyim::vnode_t val) const {
   return butil::crc32c::Value(reinterpret_cast<const char*>(&val), sizeof(val));
 }
 };
+
+//// not good
+// template<>
+// struct hash<tinyim::vnode_t> {
+// template <typename T>
+// inline void hash_combine(uint32_t& seed, T v) const {
+  // std::hash<T> hasher;
+  // seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+// }
+// uint32_t operator()(tinyim::vnode_t val) const {
+  // uint32_t seed = 0;
+  // hash_combine(seed, val.node_id);
+  // hash_combine(seed, val.vnode_id);
+  // return seed;
+// }
+// };
+
 }  // namespace std
 
 
@@ -52,6 +71,7 @@ class ConsistentHash {
   }
 
   std::pair<iterator,bool> insert(vnode_t node) {
+    // XXX maybe conflict
     return nodes_.emplace(std::hash<vnode_t>{}(node),node);
   }
 
@@ -63,15 +83,13 @@ class ConsistentHash {
     return nodes_.erase(std::hash<vnode_t>{}(node));
   }
 
-  iterator find(std::size_t hash) {
-    if(nodes_.empty()) {
-        return nodes_.end();
-    }
+  int find(uint32_t hash) {
+    assert(nodes_.empty());
     iterator iter = nodes_.lower_bound(hash);
     if (iter == nodes_.end()) {
         iter = nodes_.begin();
     }
-    return iter;
+    return iter->second.node_id;
   }
 
   iterator begin() { return nodes_.begin(); }
@@ -92,13 +110,10 @@ class ConsistentHash {
       os << "null" << std::endl;
       return;
     }
-    std::unique_ptr<int64_t> ptr(new int64_t[max_node_id + 1]);
+    std::unique_ptr<int64_t> ptr(new int64_t[max_node_id + 1]{});
     int64_t* sums = ptr.get();
 
     std::size_t n = UINT32_MAX - j->first + i->first;
-
-    // std::cout<<boost::format("vnode:%1%,hash:%2%,contains:%3%")
-            // % i->second.to_str() % i->first % n << std::endl;
 
     sums[i->second.node_id] += n;
 
@@ -108,15 +123,12 @@ class ConsistentHash {
     while(++i != end) {
         cur = i->first;
         n = cur - priv;
-        // std::cout<<boost::format("vnode:%1%,hash:%2%,contains:%3%")
-            // % i->second.to_str() % cur % n << std::endl;
         sums[i->second.node_id] += n;
         priv = cur;
     }
 
     for(int i = 0; i <= max_node_id; ++i) {
       os << "node=" << i << " contains=" << sums[i] << " ";
-        // std::cout<<boost::format("node:%1% contains:%2%") % nodes[i] % sums[i] <<std::endl;
     }
     os << std::endl;
   }

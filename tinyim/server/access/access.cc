@@ -26,6 +26,7 @@ DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 DEFINE_int32(recv_heartbeat_timeout_s, 30, "Receive heartbeat timeout");
 DEFINE_int32(vnode_count, 300, "Virtual node count");
+DEFINE_string(id_server_addr, "192.168.1.100:8200", "Id server address");
 
 namespace tinyim {
 
@@ -397,9 +398,11 @@ int main(int argc, char* argv[]) {
   };
 
   tinyim::ConsistentHash consistent_hash;
-  for (int node = 0; node < static_cast<int>(sizeof(nodes)/sizeof(nodes[0])); ++node){
+  for (int node = 0; node < static_cast<int>(sizeof(nodes)/sizeof(nodes[0])); ++node) {
     for (int vnode = 0; vnode < FLAGS_vnode_count; ++vnode){
-      consistent_hash.insert({node, vnode});
+      if (!consistent_hash.insert({node, vnode}).second){
+        LOG(WARNING) << "conflict node=" << node << " vnode=" << vnode;
+      }
     }
   }
   LOG(INFO) << consistent_hash;
