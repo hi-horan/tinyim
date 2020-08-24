@@ -1,53 +1,44 @@
-#include "access/access_service.h"
+#include "logic/logic_service.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <brpc/server.h>
-// #include <bthread/bthread.h>
-// #include <bthread/unstable.h>
 #include <brpc/channel.h>
 #include <butil/status.h>
-// #include <butil/time.h>
 
 #include "util/initialize.h"
 #include "type.h"
 
-DEFINE_int32(port, 5000, "TCP Port of this server");
+DEFINE_int32(port, 6000, "TCP Port of this server");
 DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
              "read/write operations during the last `idle_timeout_s'");
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
-// DEFINE_int32(vnode_count, 300, "Virtual node count");
-DEFINE_string(id_server_addr, "192.168.1.100:8200", "Id server address");
-DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
-DEFINE_string(logic_server, "file://server_list", "Mapping to servers");
-DEFINE_string(logic_load_balancer, "c_murmurhash", "Name of load balancer");
+DEFINE_string(id_server_addr, "127.0.0.1:9000", "Id server address");
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
-DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
+
+// DEFINE_string(logic_server, "file://server_list", "Mapping to servers");
+// DEFINE_string(logic_load_balancer, "c_murmurhash", "Name of load balancer");
+// DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
+// DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 
 
 int main(int argc, char* argv[]) {
   tinyim::Initialize init(argc, &argv);
 
-  brpc::Server server;
-
-  brpc::Channel logic_channel;
+  brpc::Channel id_channel;
   brpc::ChannelOptions options;
   options.protocol = brpc::PROTOCOL_BAIDU_STD;
   options.connection_type = FLAGS_connection_type;
   options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
-  if (logic_channel.Init(FLAGS_logic_server.c_str(),
-                         FLAGS_logic_load_balancer.c_str(), &options) != 0) {
-    LOG(ERROR) << "Fail to initialize channel";
-    return -1;
-  }
+  id_channel.Init(FLAGS_id_server_addr, &options);
 
-  tinyim::AccessServiceImpl access_service_impl(&logic_channel);
-
-  if (server.AddService(&access_service_impl,
-                        brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+  tinyim::LogicServiceImpl logic_service_impl(&id_channel);
+  brpc::Server server;
+  if (server.AddService(&logic_service_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
     LOG(ERROR) << "Fail to add service";
     return -1;
   }

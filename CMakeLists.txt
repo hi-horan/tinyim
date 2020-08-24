@@ -34,5 +34,8 @@ message("cmake_current_binary_dir: ${CMAKE_CURRENT_BINARY_DIR}")
 # add_subdirectory(tinyim/client)
 
 # add_subdirectory(tinyim/server/idgen)
-add_subdirectory(tinyim/cmd_client)
-add_subdirectory(tinyim/server/access)
+
+# add_subdirectory(tinyim/cmd_client)
+# add_subdirectory(tinyim/server/access)
+
+add_subdirectory(tinyim/server/logic)

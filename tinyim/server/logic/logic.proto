@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "access/access.proto";
+
+package tinyim;
+option cc_generic_services = true;
+
+service LogicService {
+    rpc SendMsg(NewMsg) returns (MsgReply);
+    rpc PullData(Ping) returns (PullReply);
+}

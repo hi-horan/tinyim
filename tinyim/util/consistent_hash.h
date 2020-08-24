@@ -1,6 +1,8 @@
 #ifndef TINYIM_UTIL_CONSISTENT_HASH_H_
 #define TINYIM_UTIL_CONSISTENT_HASH_H_
 
+// not use
+
 // reference https://github.com/ioriiod0/consistent_hash
 
 #include <cassert>

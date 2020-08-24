@@ -14,7 +14,7 @@ message NewMsg {
     MsgType msg_type = 4;
     string message = 5;
 
-    int32 timestamp = 6;
+    int32 client_timestamp = 6;
 }
 
 message Msg {
@@ -70,6 +70,16 @@ message PullReply{
 
 }
 
+enum ReplyType{
+    SUCCESS = 0;
+
+    CONFLICT = 1;
+}
+
+message Reply {
+    ReplyType reply_type;
+}
+
 service AccessService {
     // Register
     // Signin
@@ -79,6 +89,7 @@ service AccessService {
 
     // rpc
 
+    // rpc ReadAlready()
 
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (PullReply);

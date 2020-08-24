@@ -1,8 +1,8 @@
-project(access)
+project(dbproxy)
 
-message("Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER access.proto)
-
+set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server")
+message("------------Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
+protobuf_generate_cpp(PROTO_SRC PROTO_HEADER dbproxy.proto)
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
 set(BRPC_LIB "/home/horan/projects/incubator-brpc/zbuild/output/lib/libbrpc.a")
@@ -23,12 +23,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -D__const__= -pipe -W -Wall -Wno-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof")
 
 add_executable(${PROJECT_NAME}
-    access.cc
-
-    access_service.cc
-    access_service.h
-
-    # ../../util/consistent_hash.h
+    dbproxy.cc
 
     ${PROTO_SRC}
     ${PROTO_HEADER}

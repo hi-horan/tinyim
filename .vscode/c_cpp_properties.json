@@ -5,11 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/tinyim",
-                "~/projects/leveldb/include",
-                "~/projects/leveldb",
                 "${workspaceFolder}/../build/tinyim/server",
                 "${workspaceFolder}/../build/tinyim/server/access",
-                "~/projects/incubator-brpc/src",
+                "${workspaceFolder}/../build/tinyim/server/logic",
+                "~/projects/incubator-brpc/zbuild/output/include",
                 "/usr/include",
                 "/usr/local/include"
             ],
