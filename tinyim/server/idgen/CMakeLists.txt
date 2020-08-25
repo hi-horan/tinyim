@@ -116,8 +116,11 @@ add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
 
 target_include_directories(idgen_client
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server
+        # ${PROJECT_SOURCE_DIR}/..
+        $# {PROJECT_SOURCE_DIR}/../..
         ${CMAKE_CURRENT_BINARY_DIR}
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}

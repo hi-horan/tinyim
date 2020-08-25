@@ -22,6 +22,7 @@ DEFINE_string(id_server_addr, "192.168.1.100:8200", "Id server address");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 DEFINE_string(logic_server, "file://server_list", "Mapping to servers");
+DEFINE_string(db_server, "127.0.0.1:7000", "Mapping to servers");
 DEFINE_string(logic_load_balancer, "c_murmurhash", "Name of load balancer");
 DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
@@ -43,8 +44,18 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Fail to initialize channel";
     return -1;
   }
+  brpc::Channel db_channel;
+  brpc::ChannelOptions db_options;
+  db_options.protocol = brpc::PROTOCOL_BAIDU_STD;
+  db_options.connection_type = FLAGS_connection_type;
+  db_options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
+  db_options.max_retry = FLAGS_max_retry;
+  if (db_channel.Init(FLAGS_db_server.c_str(), &options) != 0) {
+    LOG(ERROR) << "Fail to initialize channel";
+    return -1;
+  }
 
-  tinyim::AccessServiceImpl access_service_impl(&logic_channel);
+  tinyim::AccessServiceImpl access_service_impl(&logic_channel, &db_channel);
 
   if (server.AddService(&access_service_impl,
                         brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {

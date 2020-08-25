@@ -29,6 +29,8 @@ add_executable(${PROJECT_NAME}
     access_service.h
 
     # ../../util/consistent_hash.h
+    # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.cc
+    # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.h
 
     ${PROTO_SRC}
     ${PROTO_HEADER}
@@ -36,9 +38,12 @@ add_executable(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        # ${PROJECT_SOURCE_DIR}/..
+        # ${PROJECT_SOURCE_DIR}/../..
         ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_BINARY_DIR}/tinyim/server
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}
 )

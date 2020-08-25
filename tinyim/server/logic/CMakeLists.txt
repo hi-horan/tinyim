@@ -1,9 +1,7 @@
 project(logic)
 
-set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server")
-message("------------Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
+set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server/access")
 protobuf_generate_cpp(PROTO_SRC PROTO_HEADER logic.proto)
-
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
 set(BRPC_LIB "/home/horan/projects/incubator-brpc/zbuild/output/lib/libbrpc.a")
@@ -28,12 +26,29 @@ add_executable(${PROJECT_NAME}
 
     ${PROTO_SRC}
     ${PROTO_HEADER}
+
+    logic_service.cc
+    logic_service.h
+
+    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.cc
+    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.h
+
+    ${CMAKE_BINARY_DIR}/tinyim/server/idgen/idgen.pb.cc
+    ${CMAKE_BINARY_DIR}/tinyim/server/idgen/idgen.pb.h
+
+    ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.cc
+    ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.h
+
 )
 
+message("----------PROTOBUF_INCLUDE_DIRS: ${PROTOBUF_INCLUDE_DIRS}")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/../..
+        ${PROTOBUF_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server/access
         ${CMAKE_CURRENT_BINARY_DIR}
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}

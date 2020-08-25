@@ -1,5 +1,7 @@
 
 #include "access/access_service.h"
+#include "dbproxy/dbproxy.pb.h"
+#include "logic/logic.pb.h"
 
 #include <errno.h>
 #include <memory>
@@ -14,7 +16,7 @@ DEFINE_int32(recv_heartbeat_timeout_s, 30, "Receive heartbeat timeout");
 
 namespace tinyim {
 struct HeartBeatTimeoutArg{
-  UserId user_id;
+  user_id_t user_id;
   AccessServiceImpl *access_service_impl;
 };
 
@@ -25,7 +27,7 @@ static void UserHeartBeatTimeoutHeadler(void* arg){
   std::unique_ptr<tinyim::HeartBeatTimeoutArg>
     parg(static_cast<tinyim::HeartBeatTimeoutArg*>(arg));
 
-  tinyim::UserId user_id = parg->user_id;
+  tinyim::user_id_t user_id = parg->user_id;
   auto access_service_impl = parg->access_service_impl;
   access_service_impl->ClearUserData(user_id);
 }
@@ -33,19 +35,72 @@ static void UserHeartBeatTimeoutHeadler(void* arg){
 
 namespace tinyim {
 
-AccessServiceImpl::AccessServiceImpl(brpc::Channel* channel): logic_channel_(channel) {}
+AccessServiceImpl::AccessServiceImpl(brpc::Channel* logic_channel,
+                                     brpc::Channel* db_channel): logic_channel_(logic_channel),
+                                                                 db_channel_(db_channel) {}
 
 AccessServiceImpl::~AccessServiceImpl() {
   DLOG(INFO) << "Calling AccessServiceImpl dtor";
 }
 
-void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
-                      const NewMsg* new_msg,
-                      MsgReply* reply,
-                      google::protobuf::Closure* done) {
+
+void AccessServiceImpl::SignIn(google::protobuf::RpcController* controller,
+                               const SigninData* signin_data,
+                               Pong* reply,
+                               google::protobuf::Closure* done){
+
   brpc::ClosureGuard done_guard(done);
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-  const UserId user_id = new_msg->user_id();
+
+  const user_id_t user_id = signin_data->user_id();
+  const std::string password = signin_data->password();
+  DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
+             << "] from " << cntl->remote_side()
+             << " to " << cntl->local_side()
+             << " user_id=" << user_id
+             << " client timestamp=" << signin_data->client_timestamp()
+             << " password=" << password
+             << " (attached=" << cntl->request_attachment() << ")";
+
+  DbproxyService_Stub db_stub(db_channel_);
+  Pong pong;
+  brpc::Controller db_cntl;
+  db_cntl.set_log_id(cntl->log_id());
+  db_stub.AuthAndSaveSession(&db_cntl, signin_data, &pong, nullptr);
+  if (db_cntl.Failed()){
+      DLOG(ERROR) << "Fail to call GetGroupMember. " << db_cntl.ErrorText();
+      cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
+  }
+  else {
+    reply->set_last_msg_id(pong.last_msg_id());
+  }
+}
+
+void AccessServiceImpl::SignOut(google::protobuf::RpcController* controller,
+                                const UserId* userid,
+                                Pong* reply,
+                                google::protobuf::Closure* done){
+
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  const user_id_t user_id = userid->user_id();
+  DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
+             << "] from " << cntl->remote_side()
+             << " to " << cntl->local_side()
+             << " user_id=" << user_id
+             << " (attached=" << cntl->request_attachment() << ")";
+  DbproxyService_Stub db_stub(db_channel_);
+  Pong pong;
+  brpc::Controller db_cntl;
+}
+void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
+                                const NewMsg* new_msg,
+                                MsgReply* reply,
+                                google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+  const user_id_t user_id = new_msg->user_id();
   DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
             << "] from " << cntl->remote_side()
             << " to " << cntl->local_side()
@@ -57,20 +112,28 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
             << " (attached=" << cntl->request_attachment() << ")";
 
   ResetHeartBeatTimer(user_id);
-
-  reply->set_user_id(user_id);
-  reply->set_msg_id(1);
-  reply->set_last_msg_id(2);
-  reply->set_timestamp(std::time(nullptr));
+  LogicService_Stub logic_stub(logic_channel_);
+  brpc::Controller logic_cntl;
+  logic_cntl.set_log_id(cntl->log_id());
+  MsgReply logic_reply;
+  logic_stub.SendMsg(&logic_cntl, new_msg, &logic_reply, nullptr);
+  if (logic_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
+      return;
+  }
+  else {
+    *reply = logic_reply;
+  }
 }
 
 void AccessServiceImpl::PullData(google::protobuf::RpcController* controller,
-                      const Ping* ping,
-                      PullReply* pull_reply,
-                      google::protobuf::Closure* done) {
+                                 const Ping* ping,
+                                 PullReply* pull_reply,
+                                 google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-  const UserId user_id = ping->user_id();
+  const user_id_t user_id = ping->user_id();
   DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
             << "] from " << cntl->remote_side()
             << " to " << cntl->local_side()
@@ -82,12 +145,12 @@ void AccessServiceImpl::PullData(google::protobuf::RpcController* controller,
 }
 
 void AccessServiceImpl::HeartBeat(google::protobuf::RpcController* controller,
-                        const Ping* ping,
-                        Pong* pong,
-                        google::protobuf::Closure* done) {
+                                  const Ping* ping,
+                                  Pong* pong,
+                                  google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-  const UserId user_id = ping->user_id();
+  const user_id_t user_id = ping->user_id();
   DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
             << "] from " << cntl->remote_side()
             << " to " << cntl->local_side()
@@ -96,7 +159,7 @@ void AccessServiceImpl::HeartBeat(google::protobuf::RpcController* controller,
   ResetHeartBeatTimer(user_id);
 }
 
-butil::Status AccessServiceImpl::ResetHeartBeatTimer(UserId user_id){
+butil::Status AccessServiceImpl::ResetHeartBeatTimer(user_id_t user_id){
   static const int64_t heartbeat_timeout_us = FLAGS_recv_heartbeat_timeout_s * 1000000;
   const int bucket = user_id % kBucketNum;
   auto& id_map = id_map_[bucket];
@@ -132,7 +195,7 @@ butil::Status AccessServiceImpl::ResetHeartBeatTimer(UserId user_id){
   return butil::Status::OK();
 }
 
-butil::Status AccessServiceImpl::ClearUserData(UserId user_id){
+butil::Status AccessServiceImpl::ClearUserData(user_id_t user_id){
   const int bucket = user_id % kBucketNum;
   auto& id_map = id_map_[bucket];
   std::unique_ptr<HeartBeatTimeoutArg> lazy_delete;
@@ -162,7 +225,7 @@ butil::Status AccessServiceImpl::ClearUserData(UserId user_id){
   }
 }
 
-butil::Status AccessServiceImpl::PushClosureAndReply(UserId user_id,
+butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
                                   google::protobuf::Closure* done,
                                   PullReply* reply,
                                   brpc::Controller* cntl){
@@ -207,7 +270,7 @@ butil::Status AccessServiceImpl::PushClosureAndReply(UserId user_id,
   return butil::Status::OK();
 }
 
-butil::Status AccessServiceImpl::PopClosureAndReply(UserId user_id,
+butil::Status AccessServiceImpl::PopClosureAndReply(user_id_t user_id,
                                   google::protobuf::Closure** done,
                                   PullReply** reply,
                                   brpc::Controller** cntl) {

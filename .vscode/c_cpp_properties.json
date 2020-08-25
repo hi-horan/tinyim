@@ -8,6 +8,7 @@
                 "${workspaceFolder}/../build/tinyim/server",
                 "${workspaceFolder}/../build/tinyim/server/access",
                 "${workspaceFolder}/../build/tinyim/server/logic",
+                "${workspaceFolder}/../build/tinyim/server/dbproxy",
                 "~/projects/incubator-brpc/zbuild/output/include",
                 "/usr/include",
                 "/usr/local/include"

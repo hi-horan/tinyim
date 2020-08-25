@@ -33,9 +33,20 @@ message("cmake_current_binary_dir: ${CMAKE_CURRENT_BINARY_DIR}")
 # add_subdirectory(tinyim/server/sso)
 # add_subdirectory(tinyim/client)
 
-# add_subdirectory(tinyim/server/idgen)
+add_subdirectory(tinyim/server/idgen)
 
 # add_subdirectory(tinyim/cmd_client)
-# add_subdirectory(tinyim/server/access)
+add_subdirectory(tinyim/server/access)
+
+# set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server")
+# set(ALL_PROTO
+    # ${Protobuf_IMPORT_DIRS}/access.proto
+    # ${Protobuf_IMPORT_DIRS}/logic.proto
+    # ${Protobuf_IMPORT_DIRS}/dbproxy.proto
+# )
+# message("----------all_proto: ${ALL_PROTO}")
+# protobuf_generate_cpp(PROTO_SRC PROTO_HEADER ${ALL_PROTO})
 
 add_subdirectory(tinyim/server/logic)
+add_subdirectory(tinyim/server/dbproxy)
+

@@ -27,8 +27,18 @@ struct HeartBeatTimeoutArg;
 
 class AccessServiceImpl : public AccessService {
  public:
-  explicit AccessServiceImpl(brpc::Channel *channel);
+  explicit AccessServiceImpl(brpc::Channel *logic_channel, brpc::Channel* db_channel);
   virtual ~AccessServiceImpl();
+
+  virtual void SignIn(google::protobuf::RpcController* controller,
+                       const SigninData*,
+                       Pong* reply,
+                       google::protobuf::Closure* done) override;
+
+  virtual void SignOut(google::protobuf::RpcController* controller,
+                       const UserId*,
+                       Pong* reply,
+                       google::protobuf::Closure* done) override;
 
   virtual void SendMsg(google::protobuf::RpcController* controller,
                        const NewMsg* new_msg,
@@ -45,16 +55,16 @@ class AccessServiceImpl : public AccessService {
                          Pong* pong,
                          google::protobuf::Closure* done) override;
 
-  butil::Status ResetHeartBeatTimer(UserId user_id);
+  butil::Status ResetHeartBeatTimer(user_id_t user_id);
 
-  butil::Status ClearUserData(UserId user_id);
+  butil::Status ClearUserData(user_id_t user_id);
 
-  butil::Status PushClosureAndReply(UserId user_id,
+  butil::Status PushClosureAndReply(user_id_t user_id,
                                     google::protobuf::Closure* done,
                                     PullReply* reply,
                                     brpc::Controller* cntl);
 
-  butil::Status PopClosureAndReply(UserId user_id,
+  butil::Status PopClosureAndReply(user_id_t user_id,
                                    google::protobuf::Closure** done,
                                    PullReply** reply,
                                    brpc::Controller** cntl);
@@ -72,9 +82,10 @@ class AccessServiceImpl : public AccessService {
   };
   enum { kBucketNum = 16 };
   std::mutex mutex_[kBucketNum];
-  std::unordered_map<UserId, Data> id_map_[kBucketNum];
+  std::unordered_map<user_id_t, Data> id_map_[kBucketNum];
 
   brpc::Channel *logic_channel_;
+  brpc::Channel *db_channel_;
 };
 
 }  // namespace tinyim

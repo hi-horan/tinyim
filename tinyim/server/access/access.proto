@@ -4,8 +4,17 @@ package tinyim;
 option cc_generic_services = true;
 
 enum MsgType {
-    SINGLE = 0;
+    PRIVATE = 0;
     GROUP = 1;
+}
+
+message SigninData {
+    int64 user_id = 1;
+
+    string password = 2;
+    int32 client_timestamp = 3;
+
+    // client_last_msg_id
 }
 
 message NewMsg {
@@ -17,7 +26,28 @@ message NewMsg {
     int32 client_timestamp = 6;
 }
 
-message Msg {
+message MsgId {
+    int64 msg_id = 1;
+}
+
+message GroupId {
+    int64 group_id = 1;
+}
+
+message UserId {
+    int64 user_id = 1;
+}
+
+message UserIds {
+    repeated int64 user_id = 1;
+}
+
+message UserAndMsgId {
+    int64 user_id = 1;
+    int64 msg_id = 2;
+}
+
+message NewPrivateMsg {
     int64 user_id = 1;
     int64 peer_id = 2;
 
@@ -26,18 +56,40 @@ message Msg {
     string message = 4;
 
     int32 timestamp = 6;
+    int32 client_timestamp = 7;
 }
 
-message Msgs{
+message NewGroupMsg {
+    int64 group_id = 1;
+    repeated UserAndMsgId user_and_msgids = 2;
+    int64 from_user_id = 3;
+
+    string message = 4;
+    int32 timestamp = 5;
+    int32 client_timestamp = 6;
+}
+
+message Msg {
+    int64 user_id = 1;
+    int64 peer_id = 2;  // may user or group
+
+    int64 msg_id = 3;
+    MsgType msg_type = 5;
+    string message = 4;
+
+    int32 timestamp = 6;
+}
+
+message Msgs {
     repeated Msg msg = 1;
 }
 
 message MsgReply {
-    int64 user_id = 1;
+    // int64 user_id = 1;
     int64 msg_id = 3;
 
     int64 last_msg_id = 4;
-    int32 timestamp = 2;
+    // int32 timestamp = 2;
 
     // more data
 }
@@ -62,27 +114,21 @@ enum DataType {
     // ...
 }
 
-message PullReply{
+message PullReply {
     DataType data_type = 1;
     oneof reply_type {
         Msgs msgs = 2;
     }
-
-}
-
-enum ReplyType{
-    SUCCESS = 0;
-
-    CONFLICT = 1;
 }
 
 message Reply {
-    ReplyType reply_type;
 }
+
 
 service AccessService {
     // Register
-    // Signin
+    rpc SignIn(SigninData) returns (Pong);
+    rpc SignOut(UserId) returns (Pong);
 
     // rpc GroupIn()
     // rpc GroupOut()
@@ -91,8 +137,13 @@ service AccessService {
 
     // rpc ReadAlready()
 
+
+
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (PullReply);
+
+
+
 
     // rpc CreateStream(Ping) returns (Pong);
 

@@ -3,8 +3,8 @@
 
 namespace tinyim {
 
-using UserId = int64_t;
-using MsgId = int64_t;
+using user_id_t = int64_t;
+using msg_id_t = int64_t;
 
 }
 

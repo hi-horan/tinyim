@@ -1,12 +1,21 @@
 syntax = "proto3";
 package tinyim;
 
-import "access/access.proto";
+import "access.proto";
+// import "access/access.proto";
 
 option cc_generic_services = true;
 
 
+
 service DbproxyService {
-    rpc SaveMsg(Msg) returns (Reply);
-    rpc GetMsg() returns (Msg);
+    rpc AuthAndSaveSession(SigninData) returns (Pong);
+    rpc ClearSession(UserId) returns (Pong);
+    // rpc ChangeSession(UserId) returns (Pong);
+
+    rpc SavePrivateMsg(NewPrivateMsg) returns (Reply);
+    rpc SaveGroupMsg(NewGroupMsg) returns (Reply);
+    // rpc SaveGroupMsg() returns (Reply);
+    // rpc GetMsg(UserId) returns (Msg);
+    rpc GetGroupMember(GroupId) returns (UserIds);
 }

@@ -1,7 +1,6 @@
 project(dbproxy)
 
-set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server")
-message("------------Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
+set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server/access")
 protobuf_generate_cpp(PROTO_SRC PROTO_HEADER dbproxy.proto)
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
@@ -25,14 +24,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof"
 add_executable(${PROJECT_NAME}
     dbproxy.cc
 
+    dbproxy_service.cc
+    dbproxy_service.h
+
+    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.cc
+    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.h
+
     ${PROTO_SRC}
     ${PROTO_HEADER}
 )
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server/access
         ${CMAKE_CURRENT_BINARY_DIR}
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}

@@ -39,7 +39,7 @@ const char *hints(const char *buf, int *color, int *bold) {
 }
 
 struct PullDataArgs {
-  tinyim::UserId user_id;
+  tinyim::user_id_t user_id;
   brpc::Channel* channel;
 };
 
@@ -143,7 +143,7 @@ void* PullData(void *arg){
 // FIXME maybe need lock
 struct HeartBeatArg{
   brpc::Channel* channel;
-  tinyim::UserId user_id;
+  tinyim::user_id_t user_id;
   MsgId cur_user_id;
   bthread_timer_t heartbeat_timeout_id;
 };
@@ -234,7 +234,7 @@ int main(int argc, char* argv[]) {
       // return -1;
   // }
   // tinyim::AccessService_Stub stub(&channel);
-  const tinyim::UserId user_id = 1234;
+  const tinyim::user_id_t user_id = 1234;
 
   auto pull_data_args = new tinyim::PullDataArgs{user_id, &channel};
   bthread_t pull_data_bt;
@@ -269,7 +269,7 @@ int main(int argc, char* argv[]) {
     if (lne[0] != '\0' && lne[0] != '/' && lne.size() > str_len
         && !strncmp(lne.c_str(), "sendmsgto ", str_len)) {
 
-      const tinyim::UserId peer_id = strtoll(line + str_len, nullptr, 10);
+      const tinyim::user_id_t peer_id = strtoll(line + str_len, nullptr, 10);
       auto offset = lne.find_last_of(' ');
       const std::string msg(lne.begin() + offset + 1, lne.end());
 
