@@ -1,8 +1,9 @@
 syntax = "proto3";
-import "access.proto";
 
 package tinyim;
 option cc_generic_services = true;
+
+import "common/messages.proto";
 
 service LogicService {
     rpc SendMsg(NewMsg) returns (MsgReply);

@@ -1,7 +1,8 @@
 project(access)
 
-message("Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER access.proto)
+# message("Protobuf_IMPORT_DIRS: ${Protobuf_IMPORT_DIRS}")
+# protobuf_generate_cpp(PROTO_SRC1 PROTO_HEADER1 messages.proto)
+# protobuf_generate_cpp(PROTO_SRC2 PROTO_HEADER2 access.proto)
 
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
@@ -32,8 +33,11 @@ add_executable(${PROJECT_NAME}
     # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.cc
     # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.h
 
-    ${PROTO_SRC}
-    ${PROTO_HEADER}
+    # ${PROTO_SRC1}
+    # ${PROTO_HEADER1}
+
+    # ${PROTO_SRC2}
+    # ${PROTO_HEADER2}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -57,5 +61,6 @@ target_link_libraries(${PROJECT_NAME}
         glog::glog
         leveldb::leveldb
         # tinyim::util
+        tinyim::proto
         dl
 )

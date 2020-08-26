@@ -11,7 +11,7 @@ project(idgen_server)
 
 # include(FindThreads)
 # include(FindProtobuf)
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER idgen.proto)
+# protobuf_generate_cpp(PROTO_SRC PROTO_HEADER idgen.proto)
 
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
@@ -74,7 +74,8 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O0 -g -D__const__= -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -fstrict-aliasing -Wno-invalid-offsetof")
 
-add_executable(idgen_server idgen_server.cc idgen.cc ${PROTO_SRC} ${PROTO_HEADER})
+add_executable(idgen_server idgen_server.cc idgen.cc)
+# add_executable(idgen_server idgen_server.cc idgen.cc ${PROTO_SRC} ${PROTO_HEADER})
 # add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
 
 # set(DYNAMIC_LIB
@@ -92,8 +93,9 @@ message("glog include: ${GFLAGS_INCLUDE_PATH}")
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server
         ${CMAKE_CURRENT_BINARY_DIR}
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}
@@ -107,12 +109,14 @@ target_link_libraries(${PROJECT_NAME}
         OpenSSL::SSL
         glog::glog
         leveldb::leveldb
+        tinyim::proto
         # tinyim::util
         dl
 )
 # target_link_libraries(idgen_client ${BRPC_LIB} ${DYNAMIC_LIB})
 
-add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
+add_executable(idgen_client idgen_client.cc)
+# add_executable(idgen_client idgen_client.cc ${PROTO_SRC} ${PROTO_HEADER})
 
 target_include_directories(idgen_client
     PRIVATE
@@ -136,4 +140,5 @@ target_link_libraries(idgen_client
         leveldb::leveldb
         # tinyim::util
         dl
+        tinyim::proto
 )

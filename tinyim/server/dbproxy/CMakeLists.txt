@@ -1,7 +1,7 @@
 project(dbproxy)
 
-set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server/access")
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER dbproxy.proto)
+# set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server/access")
+# protobuf_generate_cpp(PROTO_SRC PROTO_HEADER dbproxy.proto)
 
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
 set(BRPC_LIB "/home/horan/projects/incubator-brpc/zbuild/output/lib/libbrpc.a")
@@ -27,11 +27,11 @@ add_executable(${PROJECT_NAME}
     dbproxy_service.cc
     dbproxy_service.h
 
-    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.cc
-    ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.h
+    # ${CMAKE_BINARY_DIR}/tinyim/server/access/messages.pb.cc
+    # ${CMAKE_BINARY_DIR}/tinyim/server/access/messages.pb.h
 
-    ${PROTO_SRC}
-    ${PROTO_HEADER}
+    # ${PROTO_SRC}
+    # ${PROTO_HEADER}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -53,6 +53,7 @@ target_link_libraries(${PROJECT_NAME}
         OpenSSL::SSL
         glog::glog
         leveldb::leveldb
+        tinyim::proto
         # tinyim::util
         dl
 )

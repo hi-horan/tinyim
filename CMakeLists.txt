@@ -33,11 +33,35 @@ message("cmake_current_binary_dir: ${CMAKE_CURRENT_BINARY_DIR}")
 # add_subdirectory(tinyim/server/sso)
 # add_subdirectory(tinyim/client)
 
-add_subdirectory(tinyim/server/idgen)
+
+include(CompileProto)
+set(PROTO_FILES common/messages.proto
+                access/access.proto
+                idgen/idgen.proto
+                logic/logic.proto
+                dbproxy/dbproxy.proto
+)
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/tinyim/server)
+set(PROTOC_FLAGS ${PROTOC_FLAGS} -I${PROTOBUF_INCLUDE_DIR})
+compile_proto(PROTO_HDRS PROTO_SRCS ${PROJECT_BINARY_DIR}/tinyim/server
+                                    ${PROJECT_BINARY_DIR}/tinyim/server
+                                    ${PROJECT_SOURCE_DIR}/tinyim/server
+                                    "${PROTO_FILES}")
+add_library(tinyim_proto_lib OBJECT ${PROTO_SRCS} ${PROTO_HDRS})
+add_library(tinyim::proto ALIAS tinyim_proto_lib)
+target_include_directories(tinyim_proto_lib
+    PRIVATE
+        ${PROJECT_BINARY_DIR}/tinyim/server
+)
+
+
+
 
 # add_subdirectory(tinyim/cmd_client)
+
 add_subdirectory(tinyim/server/access)
 
+add_subdirectory(tinyim/server/idgen)
 # set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server")
 # set(ALL_PROTO
     # ${Protobuf_IMPORT_DIRS}/access.proto
@@ -47,6 +71,6 @@ add_subdirectory(tinyim/server/access)
 # message("----------all_proto: ${ALL_PROTO}")
 # protobuf_generate_cpp(PROTO_SRC PROTO_HEADER ${ALL_PROTO})
 
-add_subdirectory(tinyim/server/logic)
 add_subdirectory(tinyim/server/dbproxy)
+add_subdirectory(tinyim/server/logic)
 

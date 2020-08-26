@@ -1,0 +1,123 @@
+syntax = "proto3";
+package tinyim;
+
+enum MsgType {
+    PRIVATE = 0;
+    GROUP = 1;
+}
+
+message SigninData {
+    int64 user_id = 1;
+
+    string password = 2;
+    int32 client_timestamp = 3;
+
+    // client_last_msg_id
+}
+
+message NewMsg {
+    int64 user_id = 1;
+    int64 peer_id = 2;
+    MsgType msg_type = 4;
+    string message = 5;
+
+    int32 client_timestamp = 6;
+}
+
+message MsgId {
+    int64 msg_id = 1;
+}
+
+message GroupId {
+    int64 group_id = 1;
+}
+
+message UserId {
+    int64 user_id = 1;
+}
+
+message UserIds {
+    repeated int64 user_id = 1;
+}
+
+message UserAndMsgId {
+    int64 user_id = 1;
+    int64 msg_id = 2;
+}
+
+message NewPrivateMsg {
+    int64 user_id = 1;
+    int64 peer_id = 2;
+
+    int64 msg_id = 3;
+    MsgType msg_type = 5;
+    string message = 4;
+
+    int32 timestamp = 6;
+    int32 client_timestamp = 7;
+}
+
+message NewGroupMsg {
+    int64 group_id = 1;
+    repeated UserAndMsgId user_and_msgids = 2;
+    int64 from_user_id = 3;
+
+    string message = 4;
+    int32 timestamp = 5;
+    int32 client_timestamp = 6;
+}
+
+message Msg {
+    int64 user_id = 1;
+    int64 peer_id = 2;  // may user or group
+
+    int64 msg_id = 3;
+    MsgType msg_type = 5;
+    string message = 4;
+
+    int32 timestamp = 6;
+}
+
+message Msgs {
+    repeated Msg msg = 1;
+}
+
+message MsgReply {
+    // int64 user_id = 1;
+    int64 msg_id = 3;
+
+    int64 last_msg_id = 4;
+    // int32 timestamp = 2;
+
+    // more data
+}
+
+message Ping {
+    int64 user_id = 1;
+}
+
+message Pong {
+    int64 last_msg_id = 1;
+    // more data
+}
+
+enum DataType {
+    NONE = 0;
+    MESSAGE = 1;
+    ADDUSER = 2;
+    REMOVEUSER = 3;
+
+    ADDGROUP = 4;
+    REMOVEGROUP = 5;
+    // ...
+}
+
+message PullReply {
+    DataType data_type = 1;
+    oneof reply_type {
+        Msgs msgs = 2;
+    }
+}
+
+message Reply {
+}

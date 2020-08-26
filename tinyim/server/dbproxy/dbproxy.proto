@@ -1,7 +1,7 @@
 syntax = "proto3";
 package tinyim;
 
-import "access.proto";
+import "common/messages.proto";
 // import "access/access.proto";
 
 option cc_generic_services = true;
