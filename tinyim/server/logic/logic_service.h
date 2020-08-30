@@ -22,7 +22,7 @@ namespace tinyim {
 
 class LogicServiceImpl : public tinyim::LogicService {
  public:
-  explicit LogicServiceImpl(brpc::Channel *id_channel, brpc::Channel* db_channel);
+  LogicServiceImpl(brpc::Channel *id_channel, brpc::Channel* db_channel);
   virtual ~LogicServiceImpl();
 
   virtual void SendMsg(google::protobuf::RpcController* controller,
@@ -66,6 +66,10 @@ class LogicServiceImpl : public tinyim::LogicService {
 
   brpc::Channel *id_channel_;
   brpc::Channel *db_channel_;
+
+  // TODO enum { kBucketNum = 16 };
+  std::mutex access_map_mtx_;
+  std::unordered_map<std::string, brpc::Channel> access_map_;
 };
 
 }  // namespace tinyim

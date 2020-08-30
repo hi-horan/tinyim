@@ -1,8 +1,5 @@
 project(logic)
 
-# set(Protobuf_IMPORT_DIRS "${CMAKE_SOURCE_DIR}/tinyim/server/access")
-# protobuf_generate_cpp(PROTO_SRC PROTO_HEADER logic.proto)
-
 set(BRPC_INCLUDE_PATH "/home/horan/projects/incubator-brpc/zbuild/output/include")
 set(BRPC_LIB "/home/horan/projects/incubator-brpc/zbuild/output/lib/libbrpc.a")
 
@@ -12,7 +9,6 @@ if(LINK_SO)
 else()
     find_library(BRPC_LIB NAMES libbrpc.a brpc)
 endif()
-
 
 if((NOT BRPC_INCLUDE_PATH) OR (NOT BRPC_LIB))
     message(FATAL_ERROR "Fail to find brpc")
@@ -24,21 +20,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof"
 add_executable(${PROJECT_NAME}
     logic.cc
 
-    # ${PROTO_SRC}
-    # ${PROTO_HEADER}
-
     logic_service.cc
     logic_service.h
-
-    # ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.cc
-    # ${CMAKE_BINARY_DIR}/tinyim/server/access/access.pb.h
-
-    # ${CMAKE_BINARY_DIR}/tinyim/server/idgen/idgen.pb.cc
-    # ${CMAKE_BINARY_DIR}/tinyim/server/idgen/idgen.pb.h
-
-    # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.cc
-    # ${CMAKE_BINARY_DIR}/tinyim/server/dbproxy/dbproxy.pb.h
-
 )
 
 message("----------PROTOBUF_INCLUDE_DIRS: ${PROTOBUF_INCLUDE_DIRS}")
@@ -59,10 +42,9 @@ target_link_libraries(${PROJECT_NAME}
         ${BRPC_LIB}
         ${PROTOBUF_LIBRARIES}
         ${GFLAGS_LIBRARIES}
-        OpenSSL::SSL
+        # OpenSSL::SSL
         glog::glog
-        leveldb::leveldb
+        # leveldb::leveldb
         tinyim::proto
-        # tinyim::util
         dl
 )

@@ -27,7 +27,7 @@ struct HeartBeatTimeoutArg;
 
 class AccessServiceImpl : public AccessService {
  public:
-  explicit AccessServiceImpl(brpc::Channel *logic_channel, brpc::Channel* db_channel);
+  AccessServiceImpl(brpc::Channel *logic_channel, brpc::Channel* db_channel);
   virtual ~AccessServiceImpl();
 
   virtual void SignIn(google::protobuf::RpcController* controller,

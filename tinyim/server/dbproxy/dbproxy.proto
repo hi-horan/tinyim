@@ -2,11 +2,18 @@ syntax = "proto3";
 package tinyim;
 
 import "common/messages.proto";
-// import "access/access.proto";
 
 option cc_generic_services = true;
 
+message Session{
+    bool has_session = 1;
+    int64 user_id = 2;
+    string addr = 3; // ip:port
+}
 
+message Sessions{
+    repeated Session session = 1;
+}
 
 service DbproxyService {
     rpc AuthAndSaveSession(SigninData) returns (Pong);
@@ -18,4 +25,9 @@ service DbproxyService {
     // rpc SaveGroupMsg() returns (Reply);
     // rpc GetMsg(UserId) returns (Msg);
     rpc GetGroupMember(GroupId) returns (UserIds);
+
+    rpc SetUserLastSendData(UserLastSendData) returns (Pong);
+    rpc GetUserLastSendData(UserId) returns (UserLastSendData);
+
+    rpc GetSessions(UserIds) returns (Sessions);
 }

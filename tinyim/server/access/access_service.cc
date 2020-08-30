@@ -116,6 +116,9 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   brpc::Controller logic_cntl;
   logic_cntl.set_log_id(cntl->log_id());
   MsgReply logic_reply;
+  // XXX consistent hash use peer_id
+  logic_cntl.set_request_code(peer_id);
+
   logic_stub.SendMsg(&logic_cntl, new_msg, &logic_reply, nullptr);
   if (logic_cntl.Failed()) {
       DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();

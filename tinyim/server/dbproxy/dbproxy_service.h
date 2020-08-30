@@ -3,22 +3,6 @@
 
 #include "dbproxy.pb.h"
 
-/*
-
-service DbproxyService {
-    rpc AuthAndSaveSession(SigninData) returns (Pong);
-    rpc ClearSession(UserId) returns (Pong);
-    // rpc ChangeSession(UserId) returns (Pong);
-
-    rpc SavePrivateMsg(NewPrivateMsg) returns (Reply);
-    rpc SaveGroupMsg(NewGroupMsg) returns (Reply);
-    // rpc SaveGroupMsg() returns (Reply);
-    // rpc GetMsg(UserId) returns (Msg);
-    rpc GetGroupMember(GroupId) returns (UserIds);
-}
-
-*/
-
 namespace brpc {
 class Channel;
 class Controller;
@@ -27,8 +11,8 @@ class Controller;
 namespace tinyim {
 class DbproxyServiceImpl : public DbproxyService {
  public:
-  DbproxyServiceImpl(brpc::Channel* channel);
-  ~DbproxyServiceImpl(){}
+  explicit DbproxyServiceImpl(brpc::Channel* channel);
+  ~DbproxyServiceImpl();
 
 
   virtual void AuthAndSaveSession(google::protobuf::RpcController* controller,

@@ -15,18 +15,16 @@ service AccessService {
     // rpc GroupOut()
 
     // rpc
-
     // rpc ReadAlready()
-
-
 
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (PullReply);
 
-
-
-
     // rpc CreateStream(Ping) returns (Pong);
-
     rpc HeartBeat(Ping) returns (Pong);
+
+
+
+    // from logic
+    rpc SendtoAccess(Msg) returns (Pong);
 }

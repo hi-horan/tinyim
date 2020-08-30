@@ -2,6 +2,8 @@
 
 namespace tinyim {
 
+DbproxyServiceImpl::~DbproxyServiceImpl() {}
+
 void DbproxyServiceImpl::AuthAndSaveSession(google::protobuf::RpcController* controller,
                                             const SigninData* new_msg,
                                             Pong* pong,
