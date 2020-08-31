@@ -9,14 +9,13 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <brpc/channel.h>
 #include <brpc/closure_guard.h>
 #include <brpc/controller.h>
 #include <brpc/options.pb.h>
 
-DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
-DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
-DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
+DEFINE_int32(access_max_retry, 3, "Max retries(not including the first RPC)");
+DEFINE_string(access_connection_type, "single", "Connection type. Available values: single, pooled, short");
+DEFINE_int32(access_timeout_ms, 100, "RPC timeout in milliseconds");
 
 namespace tinyim {
 
@@ -24,9 +23,9 @@ class SendtoAccessClosure: public ::google::protobuf::Closure {
  public:
   SendtoAccessClosure(brpc::Controller* cntl, Pong* pong): cntl_(cntl), pong_(pong){}
 
-  virtual Run() override {
-    if (cntl_.Failed()){
-      DLOG(ERROR) << "Fail to call SendtoAccess. " << cntl.ErrorText();
+  void Run() override {
+    if (cntl_->Failed()){
+      DLOG(ERROR) << "Fail to call SendtoAccess. " << cntl_->ErrorText();
     }
     delete this;
   }
@@ -93,7 +92,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   MsgIdRequest id_request;
   MsgIdReply id_reply;
   brpc::Controller id_cntl;
-  id_cntl.set_log_id(cntl.log_id());
+  id_cntl.set_log_id(cntl->log_id());
   {
     auto user_and_id_num = id_request.add_user_ids();
     user_and_id_num->set_user_id(user_id);
@@ -140,9 +139,9 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   // 3. save user last send data
   int32_t timestamp = std::time(nullptr);
   brpc::Controller db_set_cntl;
-  Reply set_reply;
+  Pong set_pong;
   last_send_data.set_msg_id(id_reply.msg_ids(0).start_msg_id());
-  db_stub.SetUserLastSendData(&db_set_cntl, &last_send_data, &set_reply, nullptr);
+  db_stub.SetUserLastSendData(&db_set_cntl, &last_send_data, &set_pong, nullptr);
   if (db_set_cntl.Failed()){
       DLOG(ERROR) << "Fail to call SetUserLastSendData. " << db_set_cntl.ErrorText();
       cntl->SetFailed(db_set_cntl.ErrorCode(), db_set_cntl.ErrorText().c_str());
@@ -216,13 +215,13 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     cntl->SetFailed(session_cntl.ErrorCode(), session_cntl.ErrorText().c_str());
     return;
   }
-  CHECK_NE(msg_id, 0) << "Id is wrong. user_id=" << user_id;
-  reply->set_msg_id(msg_id);
+  // CHECK_NE(msg_id, 0) << "Id is wrong. user_id=" << user_id;
+  // reply->set_msg_id(msg_id);
 
   std::vector<brpc::Channel*> channel_vec;
   channel_vec.reserve(sessions.session_size());
   {
-    std::unique_lock lck(access_map_mtx_);
+    std::unique_lock<std::mutex> lck(access_map_mtx_);
     for (int i = 0, size = sessions.session_size(); i < size; ++i){
       if (!sessions.session(i).has_session()){
         continue;
@@ -230,15 +229,15 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
       if (access_map_.count(sessions.session(i).addr()) == 0) {
         brpc::ChannelOptions options;
         options.protocol = brpc::PROTOCOL_BAIDU_STD;
-        options.connection_type = FLAGS_connection_type;
-        options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
-        options.max_retry = FLAGS_max_retry;
+        options.connection_type = FLAGS_access_connection_type;
+        options.timeout_ms = FLAGS_access_timeout_ms/*milliseconds*/;
+        options.max_retry = FLAGS_access_max_retry;
         access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
       }
       channel_vec.push_back(&(access_map_[sessions.session(i).addr()]));
     }
   }
-  for (int i = 0, size = sessions.session_size(); i < size; ++i){
+  for (int i = 0, size = sessions.session_size(), j = 0; i < size; ++i){
     if (!sessions.session(i).has_session()){
       continue;
     }
@@ -253,14 +252,14 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     auto pong = new Pong;
     auto send_to_access_closure = new SendtoAccessClosure(cntl, pong);
 
-    AccessService_Stub stub;
+    AccessService_Stub stub(channel_vec[j]);
     stub.SendtoAccess(cntl, &msg, pong, send_to_access_closure);
   }
 }
 
 void LogicServiceImpl::PullData(google::protobuf::RpcController* controller,
                                 const Ping* ping,
-                                PullReply* pull_reply,
+                                Msgs* msgs,
                                 google::protobuf::Closure* done){
 
   // ResetHeartBeatTimer(user_id);

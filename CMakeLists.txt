@@ -15,8 +15,8 @@ find_package(OpenSSL REQUIRED)
 # find_package(toml11 REQUIRED)    # for reading config file
 # find_package(RapidJSON REQUIRED) # for sso
 # find_package(hiredis REQUIRED)
-# find_package(MySQL REQUIRED)
-# find_package(Soci REQUIRED)
+find_package(MySQL REQUIRED)
+find_package(Soci REQUIRED)
 
 # arget_include_directories(${PROJECT_NAME} PUBLIC ${MySQL_INCLUDE_DIRS})
 # target_link_libraries(${PROJECT_NAME} PUBLIC ${MySQL_LIBRARIES})
@@ -44,10 +44,9 @@ target_include_directories(tinyim_proto_lib
         ${PROJECT_BINARY_DIR}/tinyim/server
 )
 
-
 # add_subdirectory(tinyim/cmd_client)
 # add_subdirectory(tinyim/server/access)
 # add_subdirectory(tinyim/server/idgen)
 
-# add_subdirectory(tinyim/server/dbproxy)
+add_subdirectory(tinyim/server/dbproxy)
 # add_subdirectory(tinyim/server/logic)

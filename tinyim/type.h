@@ -5,6 +5,7 @@ namespace tinyim {
 
 using user_id_t = int64_t;
 using msg_id_t = int64_t;
+using group_id_t = int64_t;
 
 }
 

@@ -94,6 +94,7 @@ void AccessServiceImpl::SignOut(google::protobuf::RpcController* controller,
   Pong pong;
   brpc::Controller db_cntl;
 }
+
 void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
                                 const NewMsg* new_msg,
                                 MsgReply* reply,
@@ -117,7 +118,7 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   logic_cntl.set_log_id(cntl->log_id());
   MsgReply logic_reply;
   // XXX consistent hash use peer_id
-  logic_cntl.set_request_code(peer_id);
+  logic_cntl.set_request_code(new_msg->peer_id());
 
   logic_stub.SendMsg(&logic_cntl, new_msg, &logic_reply, nullptr);
   if (logic_cntl.Failed()) {
@@ -132,7 +133,7 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
 
 void AccessServiceImpl::PullData(google::protobuf::RpcController* controller,
                                  const Ping* ping,
-                                 PullReply* pull_reply,
+                                 Msgs* msgs,
                                  google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
@@ -142,7 +143,7 @@ void AccessServiceImpl::PullData(google::protobuf::RpcController* controller,
             << " to " << cntl->local_side()
             << " user_id=" << user_id;
 
-  PushClosureAndReply(user_id, done, pull_reply, cntl);
+  PushClosureAndReply(user_id, done, msgs, cntl);
 
   done_guard.release();
 }
@@ -160,6 +161,29 @@ void AccessServiceImpl::HeartBeat(google::protobuf::RpcController* controller,
             << " user_id=" << user_id;
 
   ResetHeartBeatTimer(user_id);
+}
+
+void AccessServiceImpl::SendtoAccess(google::protobuf::RpcController* controller,
+                                     const Msg* msg,
+                                     Pong* pong,
+                                     google::protobuf::Closure* done){
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+  DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
+            << "] from " << cntl->remote_side()
+            << " to " << cntl->local_side();
+  auto peer_id = msg->peer_id();
+  ::google::protobuf::Closure* client_done = nullptr;
+  Msgs* msgs = nullptr;
+  brpc::Controller* client_cntl = nullptr;
+  PopClosureAndReply(peer_id, &client_done, &msgs, &client_cntl);
+  if (client_done != nullptr) {
+    brpc::ClosureGuard done_guard(client_done);
+    *msgs->add_msg() = *msg;
+  }
+  else {
+    // TODO save in cache
+  }
 }
 
 butil::Status AccessServiceImpl::ResetHeartBeatTimer(user_id_t user_id){
@@ -215,8 +239,7 @@ butil::Status AccessServiceImpl::ClearUserData(user_id_t user_id){
       id_map.erase(user_id);
       lck.unlock();
 
-      if (origin_data.reply != nullptr){
-        origin_data.reply->set_data_type(DataType::NONE);
+      if (origin_data.msgs != nullptr){
         origin_data.cntl->CloseConnection("Server close");
         origin_data.done->Run();
       }
@@ -230,7 +253,7 @@ butil::Status AccessServiceImpl::ClearUserData(user_id_t user_id){
 
 butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
                                   google::protobuf::Closure* done,
-                                  PullReply* reply,
+                                  Msgs* msgs,
                                   brpc::Controller* cntl){
   const int bucket = user_id % kBucketNum;
   auto& id_map = id_map_[bucket];
@@ -240,16 +263,16 @@ butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
 
   std::unique_lock<std::mutex> lck(mutex_[bucket]);
   if (id_map.count(user_id) == 0){
-    id_map[user_id] = { done, reply, cntl, 0, nullptr };
+    id_map[user_id] = { done, msgs, cntl, 0, nullptr };
   }
   else {
     auto& data = id_map[user_id];
     if (data.done){
-      data.reply->set_data_type(DataType::NONE);
+      // data.msgs->set_data_type(DataType::NONE);
       lazy_run.reset(data.done);
     }
     data.done = done;
-    data.reply = reply;
+    data.msgs = msgs;
     data.cntl = cntl;
     if (data.heartbeat_timeout_id != 0){
       if (bthread_timer_del(data.heartbeat_timeout_id) == 0){
@@ -275,7 +298,7 @@ butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
 
 butil::Status AccessServiceImpl::PopClosureAndReply(user_id_t user_id,
                                   google::protobuf::Closure** done,
-                                  PullReply** reply,
+                                  Msgs** msgs,
                                   brpc::Controller** cntl) {
   brpc::ClosureGuard lazy_run;
   const int bucket = user_id % kBucketNum;
@@ -290,8 +313,8 @@ butil::Status AccessServiceImpl::PopClosureAndReply(user_id_t user_id,
       *done = data.done;
       data.done = nullptr;
       // *reply = id_map[user_id].reply;
-      *reply = data.reply;
-      data.reply = nullptr;
+      *msgs = data.msgs;
+      data.msgs = nullptr;
       // *cntl = id_map[user_id].cntl;
       *cntl = data.cntl;
       data.cntl = nullptr;
@@ -305,8 +328,8 @@ butil::Status AccessServiceImpl::PopClosureAndReply(user_id_t user_id,
       if (data.done){
         lazy_run.reset(data.done);
         data.done = nullptr;
-        data.reply->set_data_type(DataType::NONE);
-        data.reply = nullptr;
+        // data.msgs->set_data_type(DataType::NONE);
+        data.msgs = nullptr;
         data.cntl = nullptr;
       }
       // if (bthread_timer_del(data.heartbeat_timeout_id) == 0){
@@ -330,8 +353,8 @@ void AccessServiceImpl::ClearClosureAndReply() {
   for (int bucket = 0; bucket < kBucketNum; ++bucket){
     for (auto iter = id_map_[bucket].begin(); iter != id_map_[bucket].end(); ++iter){
       auto& data = iter->second;
-      if (data.reply != nullptr){
-        data.reply->set_data_type(DataType::NONE);
+      if (data.msgs != nullptr){
+        // data.reply->set_data_type(DataType::NONE);
         data.cntl->CloseConnection("Server close");
         data.done->Run();
       }

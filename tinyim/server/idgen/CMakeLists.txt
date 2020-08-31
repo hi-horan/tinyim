@@ -39,7 +39,7 @@ target_link_libraries(${PROJECT_NAME}
         ${BRPC_LIB}
         ${PROTOBUF_LIBRARIES}
         ${GFLAGS_LIBRARIES}
-        # OpenSSL::SSL
+        OpenSSL::SSL
         glog::glog
         leveldb::leveldb
         tinyim::proto
@@ -63,9 +63,9 @@ target_link_libraries(idgen_client
         ${BRPC_LIB}
         ${PROTOBUF_LIBRARIES}
         ${GFLAGS_LIBRARIES}
-        # OpenSSL::SSL
+        OpenSSL::SSL
         glog::glog
-        # leveldb::leveldb
+        leveldb::leveldb
         tinyim::proto
         dl
 )

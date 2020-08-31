@@ -7,5 +7,5 @@ import "common/messages.proto";
 
 service LogicService {
     rpc SendMsg(NewMsg) returns (MsgReply);
-    rpc PullData(Ping) returns (PullReply);
+    rpc PullData(Ping) returns (Msgs);
 }

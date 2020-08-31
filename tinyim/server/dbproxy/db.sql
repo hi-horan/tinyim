@@ -10,7 +10,9 @@ USE tinyim;
 -- DROP TABLE IF EXISTS `users`;
 
 CREATE TABLE `groups` (
-  `id` bigint(20) NOT NULL,
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+
+  `group_id` bigint(20) NOT NULL,
   `name` varchar(256) COLLATE utf8mb4_bin NOT NULL DEFAULT '',
   -- `avatar` varchar(256) COLLATE utf8mb4_bin NOT NULL DEFAULT '' COMMENT '群头像',
   `creator` bigint(20) unsigned NOT NULL,
@@ -26,9 +28,29 @@ CREATE TABLE `groups` (
   KEY `idx_creator` (`creator`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `group_members` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+
+  `group_id` bigint(20) NOT NULL,
+  `group_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+
+  `user_id` bigint(20) NOT NULL,
+  `user_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+
+  -- `avatar` varchar(256) COLLATE utf8mb4_bin NOT NULL DEFAULT '' COMMENT '群头像',
+  -- `type` tinyint(3) unsigned NOT NULL DEFAULT '1',
+  -- `userCnt` int(11) unsigned NOT NULL DEFAULT '0',
+  -- `version` int(11) unsigned NOT NULL DEFAULT '1',
+  -- `lastChated` int(11) unsigned NOT NULL DEFAULT '0',
+  `join_at` timestamp NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_name` (`name`(191)),
+  KEY `idx_creator` (`creator`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE `users` (
-  `id` bigint(11) NOT NULL,
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
   -- `user_type` tinyint(4) NOT NULL DEFAULT '0',
   `access_hash` bigint(20) NOT NULL,
   -- `first_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
@@ -70,23 +92,25 @@ CREATE TABLE `friends` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `messages` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+
   `user_id` bigint(20) NOT NULL,
   -- `user_message_box_id` int(11) NOT NULL,
   -- `dialog_message_id` bigint(20) NOT NULL,
   `peer_id` bigint(20) NOT NULL,
+
   `msg_id` bigint(20) NOT NULL,
+  `group_id` bigint(20) NOT NULL, -- 0 private msg, other group msg
   -- `sender_user_id` int(11) NOT NULL,
-  `message_box_type` tinyint(4) NOT NULL,
-  `peer_type` tinyint(4) NOT NULL, -- user, group or another
+  -- `message_box_type` tinyint(4) NOT NULL,
   -- `random_id` bigint(20) NOT NULL,
-  `message_type` tinyint(4) NOT NULL DEFAULT '0',
+  -- `message_type` tinyint(4) NOT NULL DEFAULT '0',
   `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
   -- `date2` int(11) NOT NULL DEFAULT '0',
   `deleted` tinyint(4) NOT NULL DEFAULT '0',
 
-  `client_time` timestamp NOT NULL DEFAULT,
+  `send` tinyint(4) NOT NULL DEFAULT '0', -- 1: from user to peer 0: from peer to user
 
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  PRIMARY KEY (`user_id`, `message_id`)
+  `time` timestamp NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

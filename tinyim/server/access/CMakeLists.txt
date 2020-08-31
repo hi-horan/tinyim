@@ -41,7 +41,7 @@ target_link_libraries(${PROJECT_NAME}
         ${GFLAGS_LIBRARIES}
         OpenSSL::SSL
         glog::glog
-        # leveldb::leveldb
+        leveldb::leveldb
         tinyim::proto
         dl
 )

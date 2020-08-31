@@ -30,30 +30,35 @@ class AccessServiceImpl : public AccessService {
   AccessServiceImpl(brpc::Channel *logic_channel, brpc::Channel* db_channel);
   virtual ~AccessServiceImpl();
 
-  virtual void SignIn(google::protobuf::RpcController* controller,
-                       const SigninData*,
-                       Pong* reply,
-                       google::protobuf::Closure* done) override;
+  void SignIn(google::protobuf::RpcController* controller,
+              const SigninData*,
+              Pong* reply,
+              google::protobuf::Closure* done) override;
 
-  virtual void SignOut(google::protobuf::RpcController* controller,
-                       const UserId*,
-                       Pong* reply,
-                       google::protobuf::Closure* done) override;
+  void SignOut(google::protobuf::RpcController* controller,
+               const UserId*,
+               Pong* reply,
+               google::protobuf::Closure* done) override;
 
-  virtual void SendMsg(google::protobuf::RpcController* controller,
-                       const NewMsg* new_msg,
-                       MsgReply* reply,
-                       google::protobuf::Closure* done) override;
+  void SendMsg(google::protobuf::RpcController* controller,
+               const NewMsg* new_msg,
+               MsgReply* reply,
+               google::protobuf::Closure* done) override;
 
-  virtual void PullData(google::protobuf::RpcController* controller,
-                        const Ping* ping,
-                        PullReply* pull_reply,
-                        google::protobuf::Closure* done) override;
+  void PullData(google::protobuf::RpcController* controller,
+                const Ping* ping,
+                Msgs* msgs,
+                google::protobuf::Closure* done) override;
 
-  virtual void HeartBeat(google::protobuf::RpcController* controller,
-                         const Ping* ping,
-                         Pong* pong,
-                         google::protobuf::Closure* done) override;
+  void HeartBeat(google::protobuf::RpcController* controller,
+                 const Ping* ping,
+                 Pong* pong,
+                 google::protobuf::Closure* done) override;
+
+  void SendtoAccess(google::protobuf::RpcController* controller,
+                    const Msg* msg,
+                    Pong* pong,
+                    google::protobuf::Closure* done) override;
 
   butil::Status ResetHeartBeatTimer(user_id_t user_id);
 
@@ -61,12 +66,12 @@ class AccessServiceImpl : public AccessService {
 
   butil::Status PushClosureAndReply(user_id_t user_id,
                                     google::protobuf::Closure* done,
-                                    PullReply* reply,
+                                    Msgs* msgs,
                                     brpc::Controller* cntl);
 
   butil::Status PopClosureAndReply(user_id_t user_id,
                                    google::protobuf::Closure** done,
-                                   PullReply** reply,
+                                   Msgs** msgs,
                                    brpc::Controller** cntl);
   void ClearClosureAndReply();
   void Clear();
@@ -74,7 +79,7 @@ class AccessServiceImpl : public AccessService {
 
   struct Data{
     google::protobuf::Closure* done;
-    PullReply* reply;
+    Msgs* msgs;
     brpc::Controller* cntl;
 
     bthread_timer_t heartbeat_timeout_id;

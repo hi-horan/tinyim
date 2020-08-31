@@ -7,6 +7,7 @@
 #include <mutex>
 #include <unordered_map>
 
+#include <brpc/channel.h>
 #include <bthread/unstable.h>
 
 namespace brpc {
@@ -25,15 +26,15 @@ class LogicServiceImpl : public tinyim::LogicService {
   LogicServiceImpl(brpc::Channel *id_channel, brpc::Channel* db_channel);
   virtual ~LogicServiceImpl();
 
-  virtual void SendMsg(google::protobuf::RpcController* controller,
-                       const NewMsg* new_msg,
-                       MsgReply* reply,
-                       google::protobuf::Closure* done) override;
+  void SendMsg(google::protobuf::RpcController* controller,
+               const NewMsg* new_msg,
+               MsgReply* reply,
+               google::protobuf::Closure* done) override;
 
-  virtual void PullData(google::protobuf::RpcController* controller,
-                        const Ping* ping,
-                        PullReply* pull_reply,
-                        google::protobuf::Closure* done) override;
+  void PullData(google::protobuf::RpcController* controller,
+                const Ping* ping,
+                Msgs* msgs,
+                google::protobuf::Closure* done) override;
 
   // butil::Status ClearUserData(user_id_t user_id);
 
