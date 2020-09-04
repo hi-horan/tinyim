@@ -107,7 +107,7 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
             << " to " << cntl->local_side()
             << " user_id=" << user_id
             << " peer_id=" << new_msg->peer_id()
-            << " timestamp=" << new_msg->client_timestamp()
+            << " client_time=" << new_msg->client_time()
             << " msg_type=" << new_msg->msg_type()
             << " message=" << new_msg->message()
             << " (attached=" << cntl->request_attachment() << ")";

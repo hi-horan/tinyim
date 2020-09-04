@@ -60,7 +60,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
             << " to " << cntl->local_side()
             << " user_id=" << user_id
             << " peer_id=" << new_msg->peer_id()
-            << " timestamp=" << new_msg->client_timestamp()
+            << " client_time=" << new_msg->client_time()
             << " msg_type=" << new_msg->msg_type()
             << " message=" << new_msg->message()
             << " (attached=" << cntl->request_attachment() << ")";
@@ -79,10 +79,10 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     return;
   }
   else {
-    // TODO when last_send_data.client_timestamp() = 0
-    if (last_send_data.client_timestamp() == new_msg->client_timestamp()) {
+    // TODO when last_send_data.client_time() = 0
+    if (last_send_data.client_time() == new_msg->client_time()) {
       reply->set_msg_id(last_send_data.msg_id());
-      reply->set_timestamp(last_send_data.client_timestamp());
+      reply->set_msg_time(last_send_data.msg_time());
       return;
     }
   }
@@ -137,7 +137,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   }
 
   // 3. save user last send data
-  int32_t timestamp = std::time(nullptr);
+  int32_t msg_time = std::time(nullptr);
   brpc::Controller db_set_cntl;
   Pong set_pong;
   last_send_data.set_msg_id(id_reply.msg_ids(0).start_msg_id());
@@ -155,8 +155,8 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     new_private_msg.set_user_id(user_id);
     new_private_msg.set_msg_type(new_msg->msg_type());
     new_private_msg.set_peer_id(new_msg->peer_id());
-    new_private_msg.set_client_timestamp(new_msg->client_timestamp());
-    new_private_msg.set_timestamp(timestamp); // TODO should earlier
+    new_private_msg.set_client_time(new_msg->client_time());
+    new_private_msg.set_msg_time(msg_time); // TODO should earlier
     DbproxyService_Stub db_stub2(db_channel_);
     brpc::Controller db_cntl;
     Reply db_reply;
@@ -168,7 +168,6 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     }
     else{
       reply->set_msg_id(msg_id);
-      // reply->set_timestamp(timestamp);
       return;
     }
   }

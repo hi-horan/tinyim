@@ -14,6 +14,25 @@ message Session{
 message Sessions{
     repeated Session session = 1;
 }
+message UserIdAndGroupId {
+    int64 msg_id = 1;
+    int64 group_id = 2;
+
+    int32 msg_count = 3; // client can choose get how many msgs
+}
+
+message PairUserId {
+    int64 user_id = 1;
+    int64 peer_id = 2;
+
+    int32 msg_count = 3; // client can choose get how many msgs
+}
+
+message PairMsgId {
+    int64 user_id = 1;
+    int64 start_msg_id = 2;
+    int64 end_msg_id = 3;
+}
 
 service DbproxyService {
     rpc AuthAndSaveSession(SigninData) returns (Pong);
@@ -25,6 +44,14 @@ service DbproxyService {
     // rpc SaveGroupMsg() returns (Reply);
     // rpc GetMsg(UserId) returns (Msg);
     rpc GetGroupMember(GroupId) returns (UserIds);
+    rpc GetLastGroupMsgs(UserIdAndGroupId) returns (Msgs);
+    rpc GetPrivateMsgs(PairUserId) returns (Msgs);
+    rpc GetUserMsgs(PairMsgId) returns (Msgs);
+
+    // rpc GetAllNewMsgs(UserId) returns (Msgs);
+
+
+    rpc GetLastMsgId(UserId) returns (MsgId);
 
     // TODO get and set should atomic for idempotent
     // rpc CasUserLastSendData(UserLastSendData) returns (Pong);

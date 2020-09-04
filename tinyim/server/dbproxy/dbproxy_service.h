@@ -4,7 +4,12 @@
 #include "dbproxy.pb.h"
 #include "type.h"
 
+#include <brpc/channel.h>
+#include <brpc/redis.h>
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <soci/soci.h>
+
 
 namespace brpc {
 class Channel;
@@ -41,6 +46,17 @@ class DbproxyServiceImpl : public DbproxyService {
                       const GroupId* new_msg,
                       UserIds* reply,
                       google::protobuf::Closure* done) override;
+
+  // user_last_send save in redis like `user_idu:[msg_id,client_time,msg_time]'
+  void SetUserLastSendData(google::protobuf::RpcController* controller,
+                           const UserLastSendData*,
+                           Pong*,
+                           google::protobuf::Closure* done) override;
+
+  void GetUserLastSendData(google::protobuf::RpcController* controller,
+                           const UserId*,
+                           UserLastSendData*,
+                           google::protobuf::Closure* done) override;
  private:
 
   soci::connection_pool* ChooseDatabase(user_id_t user_id){
@@ -51,6 +67,7 @@ class DbproxyServiceImpl : public DbproxyService {
   soci::connection_pool db_message_connect_pool_;
 
   soci::connection_pool db_group_members_connect_pool_;
+  brpc::Channel redis_channel_;
 };
 
 }  // namespace tinyim

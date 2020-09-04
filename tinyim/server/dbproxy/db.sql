@@ -94,23 +94,21 @@ CREATE TABLE `friends` (
 CREATE TABLE `messages` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
 
-  `user_id` bigint(20) NOT NULL,
-  -- `user_message_box_id` int(11) NOT NULL,
-  -- `dialog_message_id` bigint(20) NOT NULL,
-  `peer_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) NOT NULL, -- equal sender or receiver
+  `sender` bigint(20) NOT NULL,
+  `receiver` bigint(20) NOT NULL, -- maybe group_id
 
   `msg_id` bigint(20) NOT NULL,
-  `group_id` bigint(20) NOT NULL, -- 0 private msg, other group msg
-  -- `sender_user_id` int(11) NOT NULL,
-  -- `message_box_type` tinyint(4) NOT NULL,
-  -- `random_id` bigint(20) NOT NULL,
-  -- `message_type` tinyint(4) NOT NULL DEFAULT '0',
+  `group_id` bigint(20) NOT NULL DEFAULT '0', -- 0 private msg, other group msg
+
   `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  -- `date2` int(11) NOT NULL DEFAULT '0',
   `deleted` tinyint(4) NOT NULL DEFAULT '0',
 
-  `send` tinyint(4) NOT NULL DEFAULT '0', -- 1: from user to peer 0: from peer to user
+  -- `send` tinyint(4) NOT NULL DEFAULT '0', -- 1: from user to peer 0: from peer to user
 
-  `time` timestamp NOT NULL,
-  PRIMARY KEY (`id`)
+  `client_time` timestamp NOT NULL, -- sender and client_time can make one msg idempotent
+  `msg_time` timestamp NOT NULL, -- time when server get msg from sender
+
+  PRIMARY KEY (`id`),
+  UNIQUE key `userid_and_sender_and_time`(`user_id`, `sender`, `send_time`),
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
