@@ -30,6 +30,11 @@ class AccessServiceImpl : public AccessService {
   AccessServiceImpl(brpc::Channel *logic_channel, brpc::Channel* db_channel);
   virtual ~AccessServiceImpl();
 
+  void Test(google::protobuf::RpcController* controller,
+               const Ping* ping,
+               Pong* pong,
+               google::protobuf::Closure* done) override;
+
   void SignIn(google::protobuf::RpcController* controller,
               const SigninData*,
               Pong* reply,

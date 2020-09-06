@@ -24,6 +24,8 @@ add_executable(${PROJECT_NAME}
     access_service.h
 )
 
+file(COPY ${PROJECT_SOURCE_DIR}/server_list DESTINATION ${EXECUTABLE_OUTPUT_PATH})
+
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_SOURCE_DIR}/tinyim

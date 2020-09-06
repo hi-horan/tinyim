@@ -43,6 +43,13 @@ AccessServiceImpl::~AccessServiceImpl() {
   DLOG(INFO) << "Calling AccessServiceImpl dtor";
 }
 
+void AccessServiceImpl::Test(google::protobuf::RpcController* controller,
+                            const Ping* ping,
+                            Pong* pong,
+                            google::protobuf::Closure* done){
+  brpc::ClosureGuard done_guard(done);
+  DLOG(INFO) << "Running test";
+}
 
 void AccessServiceImpl::SignIn(google::protobuf::RpcController* controller,
                                const SigninData* signin_data,

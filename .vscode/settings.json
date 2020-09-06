@@ -20,7 +20,8 @@
         "cstddef": "cpp",
         "cstdint": "cpp",
         "bitset": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "iosfwd": "cpp"
     },
     "C_Cpp.intelliSenseCacheSize": 0,
     "C_Cpp.intelliSenseCachePath": "/tmp"

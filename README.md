@@ -59,3 +59,6 @@ TODO 当前为了消息不丢失,将所有消息保存到数据库后才向上�
 
 user_last_send save in redis like 'user_idu:[msg_id,client_time,msg_time]'
 access address save in redis like 'user_ida:192.168.0.2:8000'
+
+### run before
+export LD_PRELOAD=/lib/libasan.so

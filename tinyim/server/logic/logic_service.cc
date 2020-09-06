@@ -18,7 +18,6 @@ DEFINE_string(access_connection_type, "single", "Connection type. Available valu
 DEFINE_int32(access_timeout_ms, 100, "RPC timeout in milliseconds");
 
 namespace tinyim {
-
 class SendtoAccessClosure: public ::google::protobuf::Closure {
  public:
   SendtoAccessClosure(brpc::Controller* cntl, Pong* pong): cntl_(cntl), pong_(pong){}
@@ -48,6 +47,14 @@ LogicServiceImpl::~LogicServiceImpl() {
   DLOG(INFO) << "Calling AccessServiceImpl dtor";
 }
 
+void LogicServiceImpl::Test(google::protobuf::RpcController* controller,
+                            const Ping* ping,
+                            Pong* pong,
+                            google::protobuf::Closure* done){
+  brpc::ClosureGuard done_guard(done);
+  DLOG(INFO) << "Running test";
+}
+
 void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
                       const NewMsg* new_msg,
                       MsgReply* reply,
@@ -65,7 +72,6 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
             << " message=" << new_msg->message()
             << " (attached=" << cntl->request_attachment() << ")";
 
-
   // 1. check duplicate
   DbproxyService_Stub db_stub(db_channel_);
   brpc::Controller db_cntl;
@@ -74,7 +80,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   UserLastSendData last_send_data;
   db_stub.GetUserLastSendData(&db_cntl, &cur_user_id, &last_send_data, nullptr);
   if (db_cntl.Failed()){
-    DLOG(ERROR) << "Fail to call GetGroupMember. " << db_cntl.ErrorText();
+    DLOG(ERROR) << "Fail to call GetUserLastSendData. " << db_cntl.ErrorText();
     cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
     return;
   }
@@ -138,15 +144,15 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
 
   // 3. save user last send data
   int32_t msg_time = std::time(nullptr);
-  brpc::Controller db_set_cntl;
-  Pong set_pong;
-  last_send_data.set_msg_id(id_reply.msg_ids(0).start_msg_id());
-  db_stub.SetUserLastSendData(&db_set_cntl, &last_send_data, &set_pong, nullptr);
-  if (db_set_cntl.Failed()){
-      DLOG(ERROR) << "Fail to call SetUserLastSendData. " << db_set_cntl.ErrorText();
-      cntl->SetFailed(db_set_cntl.ErrorCode(), db_set_cntl.ErrorText().c_str());
-      return;
-  }
+  // brpc::Controller db_set_cntl;
+  // Pong set_pong;
+  // last_send_data.set_msg_id(id_reply.msg_ids(0).start_msg_id());
+  // db_stub.SetUserLastSendData(&db_set_cntl, &last_send_data, &set_pong, nullptr);
+  // if (db_set_cntl.Failed()){
+      // DLOG(ERROR) << "Fail to call SetUserLastSendData. " << db_set_cntl.ErrorText();
+      // cntl->SetFailed(db_set_cntl.ErrorCode(), db_set_cntl.ErrorText().c_str());
+      // return;
+  // }
 
   // 4. Save this msg to db
   if (new_msg->msg_type() == MsgType::PRIVATE) {

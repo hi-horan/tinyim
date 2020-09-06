@@ -18,13 +18,16 @@ class Controller;
 namespace butil{
 class Status;
 }  // namespace butil
-
 namespace tinyim {
-
 class LogicServiceImpl : public tinyim::LogicService {
  public:
   LogicServiceImpl(brpc::Channel *id_channel, brpc::Channel* db_channel);
   virtual ~LogicServiceImpl();
+
+  void Test(google::protobuf::RpcController* controller,
+               const Ping* ping,
+               Pong* pong,
+               google::protobuf::Closure* done) override;
 
   void SendMsg(google::protobuf::RpcController* controller,
                const NewMsg* new_msg,

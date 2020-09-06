@@ -44,9 +44,9 @@ target_include_directories(tinyim_proto_lib
         ${PROJECT_BINARY_DIR}/tinyim/server
 )
 
-# add_subdirectory(tinyim/cmd_client)
-# add_subdirectory(tinyim/server/access)
-# add_subdirectory(tinyim/server/idgen)
+add_subdirectory(tinyim/cmd_client)
+add_subdirectory(tinyim/server/access)
+add_subdirectory(tinyim/server/idgen)
 
 add_subdirectory(tinyim/server/dbproxy)
-# add_subdirectory(tinyim/server/logic)
+add_subdirectory(tinyim/server/logic)

@@ -6,6 +6,9 @@ option cc_generic_services = true;
 import "common/messages.proto";
 
 service LogicService {
+    rpc Test(Ping) returns (Pong);
+
+
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (Msgs);
 }

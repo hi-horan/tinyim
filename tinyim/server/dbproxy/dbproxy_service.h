@@ -22,6 +22,11 @@ class DbproxyServiceImpl : public DbproxyService {
   explicit DbproxyServiceImpl();
   ~DbproxyServiceImpl();
 
+  void Test(google::protobuf::RpcController* controller,
+               const Ping* ping,
+               Pong* pong,
+               google::protobuf::Closure* done) override;
+
   void AuthAndSaveSession(google::protobuf::RpcController* controller,
                           const SigninData* new_msg,
                           Pong* pong,
@@ -58,6 +63,8 @@ class DbproxyServiceImpl : public DbproxyService {
                            UserLastSendData*,
                            google::protobuf::Closure* done) override;
  private:
+  void SetUserLastSendData_(const UserLastSendData* user_last_send_data);
+
 
   soci::connection_pool* ChooseDatabase(user_id_t user_id){
     // TODO consistent hash

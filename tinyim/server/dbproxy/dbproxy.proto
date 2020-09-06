@@ -35,6 +35,8 @@ message PairMsgId {
 }
 
 service DbproxyService {
+    rpc Test(Ping) returns (Pong);
+
     rpc AuthAndSaveSession(SigninData) returns (Pong);
     rpc ClearSession(UserId) returns (Pong);
     // rpc ChangeSession(UserId) returns (Pong);

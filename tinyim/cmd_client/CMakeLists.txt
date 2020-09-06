@@ -20,8 +20,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof"
 
 add_executable(${PROJECT_NAME}
     client.cc
-    ../server/access/access.pb.cc
-    ../server/access/access.pb.h
     linenoise.c
     linenoise.h
 )
@@ -29,10 +27,10 @@ add_executable(${PROJECT_NAME}
 message("--------------------------cmake current binary dir=${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/..
-        ${PROJECT_SOURCE_DIR}/..
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
         ${CMAKE_CURRENT_BINARY_DIR}
-        ${CMAKE_CURRENT_BINARY_DIR}/../server
+        ${CMAKE_BINARY_DIR}/tinyim/server
         ${BRPC_INCLUDE_PATH}
         ${GFLAGS_INCLUDE_PATH}
 )
@@ -45,6 +43,6 @@ target_link_libraries(${PROJECT_NAME}
         OpenSSL::SSL
         glog::glog
         leveldb::leveldb
-        # tinyim::util
+        tinyim::proto
         dl
 )

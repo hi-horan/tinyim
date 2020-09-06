@@ -22,10 +22,8 @@ CREATE TABLE `groups` (
   -- `version` int(11) unsigned NOT NULL DEFAULT '1',
   -- `lastChated` int(11) unsigned NOT NULL DEFAULT '0',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  PRIMARY KEY (`id`),
-  KEY `idx_name` (`name`(191)),
-  KEY `idx_creator` (`creator`)
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `group_members` (
@@ -43,9 +41,7 @@ CREATE TABLE `group_members` (
   -- `version` int(11) unsigned NOT NULL DEFAULT '1',
   -- `lastChated` int(11) unsigned NOT NULL DEFAULT '0',
   `join_at` timestamp NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_name` (`name`(191)),
-  KEY `idx_creator` (`creator`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -70,7 +66,7 @@ CREATE TABLE `users` (
   `deleted` tinyint(4) NOT NULL DEFAULT '0',
   `delete_reason` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -87,7 +83,7 @@ CREATE TABLE `friends` (
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   -- `date2` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -110,5 +106,5 @@ CREATE TABLE `messages` (
   `msg_time` timestamp NOT NULL, -- time when server get msg from sender
 
   PRIMARY KEY (`id`),
-  UNIQUE key `userid_and_sender_and_time`(`user_id`, `sender`, `send_time`),
+  UNIQUE key `userid_and_sender_and_time`(`user_id`, `sender`, `client_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -7,7 +7,7 @@
 #include <bthread/bthread.h>
 #include <bthread/unstable.h>
 #include <brpc/stream.h>
-#include <butil/logging.h>
+// #include <butil/logging.h>
 #include <butil/time.h>
 
 #include "linenoise.h"
@@ -16,7 +16,7 @@
 
 
 DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
-DEFINE_string(server, "0.0.0.0:8001", "IP Address of server");
+DEFINE_string(server, "0.0.0.0:5000", "IP Address of server");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_int32(internal_send_heartbeat_s, 10, "Internal time that send heartbeat");
@@ -45,7 +45,7 @@ struct PullDataArgs {
 
 // run in bthread
 void* PullData(void *arg){
-  LOG(INFO) << "PullData bthread running";
+  std::cout << "PullData bthread running" << std::endl;
   auto args = static_cast<PullDataArgs*>(arg);
   auto pchannel = args->channel;
   auto user_id = args->user_id;
@@ -55,47 +55,32 @@ void* PullData(void *arg){
     brpc::Controller cntl;
     tinyim::Ping ping;
     ping.set_user_id(user_id);
-    tinyim::PullReply pull_reply;
+    tinyim::Msgs msgs;
     tinyim::AccessService_Stub stub(pchannel);
 
-    LOG(INFO) << "Calling PullData";
+    std::cout << "Calling PullData" << std::endl;
     cntl.set_timeout_ms(0x7fffffff);
-    stub.PullData(&cntl, &ping, &pull_reply, nullptr);
+    stub.PullData(&cntl, &ping, &msgs, nullptr);
     if (cntl.Failed()){
-      LOG(ERROR) << "Fail to call PullData. " << cntl.ErrorText();
+      std::cout << "Fail to call PullData. " << cntl.ErrorText() << std::endl;
       return nullptr;
     }
-    switch (pull_reply.data_type()){
-      case tinyim::DataType::NONE:
-        break;
-      case tinyim::DataType::MESSAGE:
-        if (pull_reply.has_msgs()){
-          const auto msgs = pull_reply.msgs();
-          const size_t msg_size = msgs.msg_size();
-          LOG_IF(INFO, msg_size > 0) << "Received pull reply";
-          for (size_t i = 0; i < msg_size; ++i){
-            const tinyim::Msg& msg = msgs.msg(i);
-
-            LOG(INFO) << "Received pull reply. userid=" << msg.user_id()
-                      << " peer_id=" << msg.peer_id()
-                      << " msgid=" << msg.msg_id()
-                      << " msg_type=" << msg.msg_type()
-                      << " message=" << msg.message()
-                      << " timestamp=" << msg.timestamp();
-          }
-        }
-        break;
-
-      case tinyim::DataType::ADDUSER:
-      case tinyim::DataType::REMOVEUSER:
-      case tinyim::DataType::ADDGROUP:
-      case tinyim::DataType::REMOVEGROUP:
-      default:
-        LOG(WARNING) << "pull_reply.data_type=" << pull_reply.data_type();
-        break;
-
+    const size_t msg_size = msgs.msg_size();
+    if (msg_size > 0){
+      std::cout << "Received pull reply" << std::endl;
     }
-  }
+    for (size_t i = 0; i < msg_size; ++i){
+      const Msg& msg = msgs.msg(i);
+
+      std::cout << "Received pull reply. userid=" << msg.user_id()
+                << " peer_id=" << msg.peer_id()
+                << " msgid=" << msg.msg_id()
+                << " msg_type=" << msg.data_type()
+                << " message=" << msg.message()
+                << " client_time=" << msg.client_time()
+                << " msg_time=" << msg.msg_time() << std::endl;
+      }
+    }
   return nullptr;
 }
 
@@ -144,12 +129,12 @@ void* PullData(void *arg){
 struct HeartBeatArg{
   brpc::Channel* channel;
   tinyim::user_id_t user_id;
-  MsgId cur_user_id;
+  msg_id_t cur_user_id;
   bthread_timer_t heartbeat_timeout_id;
 };
 
 void HeartBeatTimeOutHeadler(void* arg){
-  DLOG(INFO) << "Running heartbeat send";
+  std::cout << "Running heartbeat send" << std::endl;
   const auto parg = static_cast<HeartBeatArg*>(arg);
   // parg->channel;
   brpc::Controller cntl;
@@ -160,7 +145,7 @@ void HeartBeatTimeOutHeadler(void* arg){
 
   stub.HeartBeat(&cntl, &ping, &pong, nullptr);
   if (cntl.Failed()){
-    LOG(ERROR) << "Fail to call heartbeat. " << cntl.ErrorText();
+    std::cout << "Fail to call heartbeat. " << cntl.ErrorText() << std::endl;
     return;
   }
   else{
@@ -218,7 +203,7 @@ int main(int argc, char* argv[]) {
   options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
   if (channel.Init(FLAGS_server.c_str(), NULL) != 0) {
-    LOG(ERROR) << "Fail to initialize channel";
+    std::cout << "Fail to initialize channel" << std::endl;
     return -1;
   }
 
@@ -249,7 +234,7 @@ int main(int argc, char* argv[]) {
       // LOG(ERROR) << "Fail to CreateStream, " << stream_cntl.ErrorText();
       // return -1;
   // }
-  tinyim::MsgId cur_msg_id = 0;
+  tinyim::msg_id_t cur_msg_id = 0;
 
   tinyim::HeartBeatArg heartbeatarg = {&channel, user_id, cur_msg_id, 0};
   static const int64_t heartbeat_timeout_us = FLAGS_internal_send_heartbeat_s * 1000000;
@@ -260,7 +245,7 @@ int main(int argc, char* argv[]) {
 
   // LOG(INFO) << "Created Stream=" << stream;
   // const tinyim::MsgId tmp_msg_id = 12345;
-  const auto msg_type = tinyim::MsgType::SINGLE;
+  const auto msg_type = tinyim::MsgType::PRIVATE;
 
   size_t str_len = strlen("sendmsgto ");
   while (!brpc::IsAskedToQuit() && (line = linenoise("tinyim> ")) != nullptr) {
@@ -279,12 +264,12 @@ int main(int argc, char* argv[]) {
       new_msg.set_message(msg);
       new_msg.set_msg_type(msg_type);
       // TODO time must be monotonically increasing
-      new_msg.set_timestamp(std::time(nullptr));
-      LOG(INFO) << "userid=" << user_id
+      new_msg.set_client_time(std::time(nullptr));
+      std::cout << "userid=" << user_id
                 << " peer_id=" << peer_id
                 << " msg_type=" << msg_type
                 << " msg=" << msg
-                << " timestamp=" << new_msg.timestamp();
+                << " timestamp=" << new_msg.client_time() << std::endl;
 
       brpc::Controller cntl;
       tinyim::MsgReply msg_reply;
@@ -292,18 +277,18 @@ int main(int argc, char* argv[]) {
 
       bthread_timer_del(heartbeatarg.heartbeat_timeout_id);
 
-      LOG(INFO) << "Calling SendMsg";
+      std::cout << "Calling SendMsg" << std::endl;
       // TODO should be async
       stub.SendMsg(&cntl, &new_msg, &msg_reply, nullptr);
 
       if (cntl.Failed()){
-        LOG(ERROR) << "Fail to SendMsg, " << cntl.ErrorText();
+        std::cout << "Fail to SendMsg, " << cntl.ErrorText() << std::endl;
         return -1;
       }
-      LOG(INFO) << "Received msgreply. userid=" << msg_reply.user_id()
+      std::cout << "Received msgreply."
                 << " msgid=" << msg_reply.msg_id()
                 << " last_msg_id=" << msg_reply.last_msg_id()
-                << " timestamp=" << msg_reply.timestamp();
+                << " msg_time=" << msg_reply.msg_time();
 
       cur_msg_id = msg_reply.msg_id();
       heartbeatarg.cur_user_id = cur_msg_id;
@@ -335,7 +320,7 @@ int main(int argc, char* argv[]) {
     free(line);
   }
 
-  LOG(INFO) << "access_client is going to quit";
+  std::cout << "access_client is going to quit" << std::endl;
   return 0;
 }
 
