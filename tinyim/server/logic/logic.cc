@@ -15,12 +15,12 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 
-DEFINE_string(id_server_addr, "127.0.0.1:9000", "Id server address");
+DEFINE_string(id_server_addr, "127.0.0.1:8000", "Id server address");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_string(connection_type, "single", "Connection type. Available values: single, pooled, short");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 
-DEFINE_string(db_addr, "127.0.0.1:8000", "Id server address");
+DEFINE_string(db_addr, "127.0.0.1:7000", "Id server address");
 
 // DEFINE_string(logic_server, "file://server_list", "Mapping to servers");
 // DEFINE_string(logic_load_balancer, "c_murmurhash", "Name of load balancer");

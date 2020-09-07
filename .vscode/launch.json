@@ -5,11 +5,20 @@
             "name": "(gdb) 启动",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/../build/bin/access_client",
+            "program": "${workspaceFolder}/../build/bin/dbproxy",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [
+                {
+                    "name": "LD_PRELOAD",
+                    "value": "/lib/libasan.so"
+                },
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "alloc_dealloc_mismatch=0"
+                }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [

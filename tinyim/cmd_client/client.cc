@@ -19,7 +19,9 @@ DEFINE_string(connection_type, "single", "Connection type. Available values: sin
 DEFINE_string(server, "0.0.0.0:5000", "IP Address of server");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
-DEFINE_int32(internal_send_heartbeat_s, 10, "Internal time that send heartbeat");
+DEFINE_int32(internal_send_heartbeat_s, 30, "Internal time that send heartbeat");
+DEFINE_int32(user_id, 123, "Internal time that send heartbeat");
+DEFINE_string(password, "xxxxxx", "user password");
 
 namespace tinyim {
 
@@ -73,9 +75,9 @@ void* PullData(void *arg){
       const Msg& msg = msgs.msg(i);
 
       std::cout << "Received pull reply. userid=" << msg.user_id()
-                << " peer_id=" << msg.peer_id()
+                << " sender=" << msg.sender()
+                << " receiver=" << msg.receiver()
                 << " msgid=" << msg.msg_id()
-                << " msg_type=" << msg.data_type()
                 << " message=" << msg.message()
                 << " client_time=" << msg.client_time()
                 << " msg_time=" << msg.msg_time() << std::endl;
@@ -207,6 +209,26 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+
+  const tinyim::user_id_t user_id = FLAGS_user_id;
+  {
+  brpc::Controller cntl;
+  tinyim::SigninData signin_data;
+  signin_data.set_user_id(user_id);
+  signin_data.set_password(FLAGS_password);
+  tinyim::Pong pong;
+  tinyim::AccessService_Stub stub(&channel);
+
+
+  std::cout << "Calling Signin" << std::endl;
+  // TODO should be async
+  stub.SignIn(&cntl, &signin_data, &pong, nullptr);
+  if (cntl.Failed()){
+    std::cout << "Fail to call Signin. " << cntl.ErrorText() << std::endl;
+    return 0;
+  }
+  }
+
   // brpc::Controller stream_cntl;
   // brpc::StreamId stream;
 
@@ -219,7 +241,6 @@ int main(int argc, char* argv[]) {
       // return -1;
   // }
   // tinyim::AccessService_Stub stub(&channel);
-  const tinyim::user_id_t user_id = 1234;
 
   auto pull_data_args = new tinyim::PullDataArgs{user_id, &channel};
   bthread_t pull_data_bt;
@@ -248,6 +269,7 @@ int main(int argc, char* argv[]) {
   const auto msg_type = tinyim::MsgType::PRIVATE;
 
   size_t str_len = strlen("sendmsgto ");
+  int last_send_time = 0;
   while (!brpc::IsAskedToQuit() && (line = linenoise("tinyim> ")) != nullptr) {
     const std::string lne(line);
 
@@ -264,7 +286,12 @@ int main(int argc, char* argv[]) {
       new_msg.set_message(msg);
       new_msg.set_msg_type(msg_type);
       // TODO time must be monotonically increasing
-      new_msg.set_client_time(std::time(nullptr));
+      int msg_time = std::time(nullptr);
+      if (msg_time == last_send_time){
+        ++msg_time;
+        last_send_time = msg_time;
+      }
+      new_msg.set_client_time(msg_time);
       std::cout << "userid=" << user_id
                 << " peer_id=" << peer_id
                 << " msg_type=" << msg_type

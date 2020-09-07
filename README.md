@@ -62,3 +62,11 @@ access address save in redis like 'user_ida:192.168.0.2:8000'
 
 ### run before
 export LD_PRELOAD=/lib/libasan.so
+
+
+### port
+access 5000
+logic 6000
+dbproxy 7000
+
+idgen 8000

@@ -62,6 +62,11 @@ class DbproxyServiceImpl : public DbproxyService {
                            const UserId*,
                            UserLastSendData*,
                            google::protobuf::Closure* done) override;
+
+  void GetSessions(google::protobuf::RpcController* controller,
+                           const UserIds*,
+                           Sessions*,
+                           google::protobuf::Closure* done) override;
  private:
   void SetUserLastSendData_(const UserLastSendData* user_last_send_data);
 

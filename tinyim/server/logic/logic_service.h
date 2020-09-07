@@ -67,6 +67,7 @@ class LogicServiceImpl : public tinyim::LogicService {
   // enum { kBucketNum = 16 };
   // std::mutex mutex_[kBucketNum];
   // std::unordered_map<user_id_t, Data> id_map_[kBucketNum];
+  static void* SendtoPeers(void* args);
 
   brpc::Channel *id_channel_;
   brpc::Channel *db_channel_;

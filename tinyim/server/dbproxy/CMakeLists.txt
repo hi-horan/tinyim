@@ -47,3 +47,31 @@ target_link_libraries(${PROJECT_NAME}
         ${SOCI_LIBRARY}
         dl
 )
+
+add_executable(dbproxy_test
+    test.cc
+)
+
+target_include_directories(dbproxy_test
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/tinyim
+        ${CMAKE_SOURCE_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server
+        ${CMAKE_BINARY_DIR}/tinyim/server/access
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${BRPC_INCLUDE_PATH}
+        ${GFLAGS_INCLUDE_PATH}
+)
+
+target_link_libraries(dbproxy_test
+    PRIVATE
+        ${BRPC_LIB}
+        ${PROTOBUF_LIBRARIES}
+        ${GFLAGS_LIBRARIES}
+        OpenSSL::SSL
+        glog::glog
+        leveldb::leveldb
+        tinyim::proto
+        ${SOCI_LIBRARY}
+        dl
+)

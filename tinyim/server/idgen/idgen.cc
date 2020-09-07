@@ -10,7 +10,7 @@
 #include <glog/logging.h>
 
 DEFINE_string(leveldb_file, "./data/data.db", "Leveldb db file");
-DEFINE_int64(each_gen_id_num, 1024, "Each generate id num from db");
+DEFINE_int64(each_gen_id_num, 1024, "Each generate id num from db"); // must integer power of 2
 DEFINE_int64(hash_bucket_num, 12, "Each generate id num from db");
 
 namespace tinyim{
@@ -37,15 +37,19 @@ class LevelDbIdGen final : public IdGen{
     auto& id_cache = id_cache_[bucket];
     leveldb::Status status;
 
+    bool update_db = false;
     std::unique_lock<butil::Mutex> ul(mutex_[bucket]);
     int64_t& original_id = id_cache[user_id];
     if (original_id == 0){
+      update_db = true;
       std::string db_id;
       auto status = db_->Get(leveldb::ReadOptions(), leveldb::Slice(std::to_string(user_id)), &db_id);
       if (status.ok()){
+        DLOG(INFO) << "user_id=" << user_id << " db_id" << db_id;
         original_id = std::stoll(db_id);
       }
       else if (status.IsNotFound()){
+        DLOG(INFO) << "user_id=" << user_id << " not found";
         original_id = 0;
       }
       else{
@@ -54,12 +58,13 @@ class LevelDbIdGen final : public IdGen{
       }
     }
 
-                    // TODO 是否是移位?
-    if (original_id % FLAGS_each_gen_id_num + need_msgid_num > FLAGS_each_gen_id_num){
-      int64_t db_id = (original_id + need_msgid_num + FLAGS_each_gen_id_num - 1) & (FLAGS_each_gen_id_num - 1);
+    if (update_db || (original_id % FLAGS_each_gen_id_num + need_msgid_num > FLAGS_each_gen_id_num)){
+      int64_t db_id = ((original_id + need_msgid_num + FLAGS_each_gen_id_num - 1)
+                          / FLAGS_each_gen_id_num) * FLAGS_each_gen_id_num;
       auto write_options = leveldb::WriteOptions();
       // XXX 同步写
       write_options.sync = true;
+      DLOG(INFO) << "Putting" << user_id << " db_id=" << db_id;
       status = db_->Put(write_options, leveldb::Slice(std::to_string(user_id)),
                                             leveldb::Slice(std::to_string(db_id)));
       if (!status.ok()){

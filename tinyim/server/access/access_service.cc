@@ -69,11 +69,17 @@ void AccessServiceImpl::SignIn(google::protobuf::RpcController* controller,
              << " password=" << password
              << " (attached=" << cntl->request_attachment() << ")";
 
+  SigninData cur_signin_data = *signin_data;
+  std::ostringstream oss;
+  oss << cntl->local_side();
+  DLOG(INFO) << "access addr=" << oss.str();
+  cur_signin_data.set_access_addr(oss.str());
+
   DbproxyService_Stub db_stub(db_channel_);
   Pong pong;
   brpc::Controller db_cntl;
   db_cntl.set_log_id(cntl->log_id());
-  db_stub.AuthAndSaveSession(&db_cntl, signin_data, &pong, nullptr);
+  db_stub.AuthAndSaveSession(&db_cntl, &cur_signin_data, &pong, nullptr);
   if (db_cntl.Failed()){
       DLOG(ERROR) << "Fail to call GetGroupMember. " << db_cntl.ErrorText();
       cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
@@ -179,17 +185,17 @@ void AccessServiceImpl::SendtoAccess(google::protobuf::RpcController* controller
   DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
             << "] from " << cntl->remote_side()
             << " to " << cntl->local_side();
-  auto peer_id = msg->peer_id();
+  auto user_id = msg->user_id();
   ::google::protobuf::Closure* client_done = nullptr;
   Msgs* msgs = nullptr;
   brpc::Controller* client_cntl = nullptr;
-  PopClosureAndReply(peer_id, &client_done, &msgs, &client_cntl);
+  PopClosureAndReply(user_id, &client_done, &msgs, &client_cntl);
   if (client_done != nullptr) {
     brpc::ClosureGuard done_guard(client_done);
     *msgs->add_msg() = *msg;
   }
   else {
-    // TODO save in cache
+    DLOG(INFO) << "client_done = nullptr";
   }
 }
 

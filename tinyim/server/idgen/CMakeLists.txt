@@ -46,7 +46,7 @@ target_link_libraries(${PROJECT_NAME}
         dl
 )
 
-add_executable(idgen_client idgen_client.cc)
+add_executable(idgen_client idgen_client2.cc)
 
 target_include_directories(idgen_client
     PRIVATE

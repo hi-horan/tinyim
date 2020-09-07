@@ -21,7 +21,7 @@ message UserLastSendData{
     int64 user_id = 1;
     int64 msg_id = 2;
     int32 client_time = 3;  // unique for each user msg
-    int32 msg_time = 4;  // unique for each user msg
+    int32 msg_time = 4;
 }
 
 message Timestamp{
@@ -34,8 +34,8 @@ message NewMsg {
     MsgType msg_type = 4;
     string message = 5;
 
-    int32 client_time = 6;  // unique for each user msg
-    int32 msg_time = 7;  // unique for each user msg
+    int32 client_time = 6;
+    int32 msg_time = 7;
 }
 
 message MsgId {
@@ -60,15 +60,16 @@ message UserAndMsgId {
 }
 
 message NewPrivateMsg {
-    int64 user_id = 1;
-    int64 peer_id = 2;
+    int64 sender = 1;
+    int64 sender_msg_id = 2;
 
-    int64 msg_id = 3;
-    MsgType msg_type = 5;
-    string message = 4;
+    int64 receiver = 3;
+    int64 receiver_msg_id = 4;
 
-    int32 msg_time = 6;
-    int32 client_time = 7;
+    string message = 6;
+
+    int32 msg_time = 7;
+    int32 client_time = 8;
 }
 
 message NewGroupMsg {
@@ -98,18 +99,20 @@ enum DataType {
 }
 
 message Msg {
-    int64 user_id = 1;
-    int64 peer_id = 2;  // may user or group
+    int64 user_id = 1;  // may sender or receiver
+    int64 msg_id = 4;
 
-    int64 msg_id = 3;
-    string message = 4;
-    int64 group_id = 5;
+    int64 sender = 2;
+    int64 receiver = 3; // may user or group
 
-    DataType data_type = 6;
+    string message = 5;
+    int64 group_id = 6; // 0 user, another group
+
+    // DataType data_type = 7;
     // MsgType msg_type = 5;
 
-    int32 client_time = 7;
-    int32 msg_time = 8;
+    int32 client_time = 8;
+    int32 msg_time = 9;
 }
 
 message Msgs {

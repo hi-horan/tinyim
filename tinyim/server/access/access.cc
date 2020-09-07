@@ -18,7 +18,7 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 // DEFINE_int32(vnode_count, 300, "Virtual node count");
-DEFINE_string(id_server_addr, "192.168.1.100:8200", "Id server address");
+DEFINE_string(id_server_addr, "192.168.1.100:8000", "Id server address");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 DEFINE_string(logic_server, "file://server_list", "Mapping to servers");

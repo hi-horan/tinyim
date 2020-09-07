@@ -9,6 +9,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <bthread/bthread.h>
 #include <brpc/closure_guard.h>
 #include <brpc/controller.h>
 #include <brpc/options.pb.h>
@@ -17,12 +18,25 @@ DEFINE_int32(access_max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_string(access_connection_type, "single", "Connection type. Available values: single, pooled, short");
 DEFINE_int32(access_timeout_ms, 100, "RPC timeout in milliseconds");
 
+namespace {
+struct SendtoPeersArgs {
+  tinyim::MsgIdRequest id_request;
+  tinyim::MsgIdReply id_reply;
+  tinyim::NewMsg new_msg;
+  tinyim::user_id_t sender;
+  tinyim::LogicServiceImpl* this_;
+};
+
+}  // namespace
+
+
 namespace tinyim {
 class SendtoAccessClosure: public ::google::protobuf::Closure {
  public:
   SendtoAccessClosure(brpc::Controller* cntl, Pong* pong): cntl_(cntl), pong_(pong){}
 
   void Run() override {
+    DLOG(INFO) << "Running SendtoAccessClosure";
     if (cntl_->Failed()){
       DLOG(ERROR) << "Fail to call SendtoAccess. " << cntl_->ErrorText();
     }
@@ -56,9 +70,9 @@ void LogicServiceImpl::Test(google::protobuf::RpcController* controller,
 }
 
 void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
-                      const NewMsg* new_msg,
-                      MsgReply* reply,
-                      google::protobuf::Closure* done) {
+                               const NewMsg* new_msg,
+                               MsgReply* reply,
+                               google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
   const tinyim::user_id_t user_id = new_msg->user_id();
@@ -94,9 +108,13 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   }
 
   // 2. Get id for this msg
+  std::unique_ptr<SendtoPeersArgs> sendto_peers_args(new SendtoPeersArgs);
+  sendto_peers_args->sender = user_id;
+  // sendto_peers_args->new_msg;
+
   IdGenService_Stub id_stub(id_channel_);
-  MsgIdRequest id_request;
-  MsgIdReply id_reply;
+  MsgIdRequest &id_request = sendto_peers_args->id_request;
+  MsgIdReply &id_reply = sendto_peers_args->id_reply;
   brpc::Controller id_cntl;
   id_cntl.set_log_id(cntl->log_id());
   {
@@ -135,6 +153,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     }
   }
 
+
   id_stub.IdGenerate(&id_cntl, &id_request, &id_reply, nullptr);
   if (id_cntl.Failed()){
       DLOG(ERROR) << "Fail to call IdGenerate. " << id_cntl.ErrorText();
@@ -156,13 +175,16 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
 
   // 4. Save this msg to db
   if (new_msg->msg_type() == MsgType::PRIVATE) {
-    const msg_id_t msg_id = id_reply.msg_ids(0).start_msg_id();
+    const msg_id_t sender_msg_id = id_reply.msg_ids(0).start_msg_id();
+    const msg_id_t receiver_msg_id = id_reply.msg_ids(1).start_msg_id();
     NewPrivateMsg new_private_msg;
-    new_private_msg.set_user_id(user_id);
-    new_private_msg.set_msg_type(new_msg->msg_type());
-    new_private_msg.set_peer_id(new_msg->peer_id());
+    new_private_msg.set_sender(user_id);
+    new_private_msg.set_receiver(new_msg->peer_id());
     new_private_msg.set_client_time(new_msg->client_time());
     new_private_msg.set_msg_time(msg_time); // TODO should earlier
+    new_private_msg.set_message(new_msg->message());
+    new_private_msg.set_sender_msg_id(sender_msg_id);
+    new_private_msg.set_receiver_msg_id(receiver_msg_id);
     DbproxyService_Stub db_stub2(db_channel_);
     brpc::Controller db_cntl;
     Reply db_reply;
@@ -173,21 +195,31 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
       return;
     }
     else{
-      reply->set_msg_id(msg_id);
-      return;
+      reply->set_msg_id(sender_msg_id);
+      reply->set_last_msg_id(sender_msg_id);
+      reply->set_msg_time(msg_time);
+      // return;
     }
   }
   else{
     NewGroupMsg new_group_msg;
+    new_group_msg.set_group_id(new_msg->peer_id());
+    new_group_msg.set_message(new_msg->message());
+    new_group_msg.set_client_time(new_msg->client_time());
+    new_group_msg.set_msg_time(msg_time);
+    new_group_msg.set_sender_user_id(user_id);
     msg_id_t msg_id = 0;
     for (int i = 0, size = id_reply.msg_ids_size(); i < size; ++i){
       auto puser_and_msgid = new_group_msg.add_user_and_msgids();
       if (user_id == id_reply.msg_ids(i).user_id()){
+        // TODO sender is first one
         msg_id = id_reply.msg_ids(i).start_msg_id();
       }
       puser_and_msgid->set_user_id(id_reply.msg_ids(i).user_id());
       puser_and_msgid->set_msg_id(id_reply.msg_ids(i).start_msg_id());
     }
+    DLOG_IF(INFO, msg_id > 0) << "Fail to get id from idgen msg_id=" << msg_id << " user_id=" << user_id;
+    new_group_msg.set_sender_msg_id(msg_id);
     DbproxyService_Stub db_stub2(db_channel_);
     brpc::Controller db_cntl;
     Reply db_reply;
@@ -202,12 +234,102 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
       reply->set_msg_id(msg_id);
       // reply->set_timestamp(timestamp);
     }
+    reply->set_msg_id(msg_id);
+    reply->set_last_msg_id(msg_id);
+    reply->set_msg_time(msg_time);
   }
+
+  sendto_peers_args->new_msg = *new_msg;
+  sendto_peers_args->this_ = this;
+
+  bthread_t bt;
+  bthread_start_background(&bt, nullptr, SendtoPeers, sendto_peers_args.release());
+
+  // TODO run in bthread
+
+
   // 5. Send msg to peer or all user in group
-  DbproxyService_Stub session_stub(db_channel_);
+  // DbproxyService_Stub session_stub(db_channel_);
+  // brpc::Controller session_cntl;
+  // Sessions sessions;
+  // UserIds user_ids;
+
+  // for (int i = 1, size = id_request.user_ids_size(); i < size; ++i){
+    // // i = 0 is user_id
+    // user_ids.add_user_id(id_request.user_ids(i).user_id());
+  // }
+
+  // session_stub.GetSessions(&session_cntl, &user_ids, &sessions, nullptr);
+  // if (session_cntl.Failed()){
+    // DLOG(ERROR) << "Fail to call GetSessions. " << session_cntl.ErrorText();
+    // cntl->SetFailed(session_cntl.ErrorCode(), session_cntl.ErrorText().c_str());
+    // return;
+  // }
+  // DLOG(INFO) << "GetSessions. response size=" << sessions.session_size();
+  // // CHECK_NE(msg_id, 0) << "Id is wrong. user_id=" << user_id;
+  // // reply->set_msg_id(msg_id);
+
+  // std::vector<brpc::Channel*> channel_vec;
+  // channel_vec.reserve(sessions.session_size());
+  // {
+    // std::unique_lock<std::mutex> lck(access_map_mtx_);
+    // for (int i = 0, size = sessions.session_size(); i < size; ++i){
+      // if (!sessions.session(i).has_session()){
+        // continue;
+      // }
+      // if (access_map_.count(sessions.session(i).addr()) == 0) {
+        // brpc::ChannelOptions options;
+        // options.protocol = brpc::PROTOCOL_BAIDU_STD;
+        // options.connection_type = FLAGS_access_connection_type;
+        // options.timeout_ms = FLAGS_access_timeout_ms/*milliseconds*/;
+        // options.max_retry = FLAGS_access_max_retry;
+        // access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
+      // }
+      // channel_vec.push_back(&(access_map_[sessions.session(i).addr()]));
+    // }
+  // }
+  // for (int i = 0, size = sessions.session_size(), j = 0; i < size; ++i){
+    // if (!sessions.session(i).has_session()){
+      // continue;
+    // }
+    // auto cntl = new brpc::Controller;
+    // Msg msg;
+    // // XXX const char*
+    // msg.set_user_id(user_ids.user_id(i));
+    // msg.set_sender(user_id);
+    // msg.set_receiver(user_ids.user_id(i));
+    // msg.set_message(new_msg->message().c_str());
+    // msg.set_msg_id(id_reply.msg_ids(i + 1).start_msg_id());
+    // msg.set_client_time(new_msg->client_time());
+    // msg.set_msg_time(new_msg->msg_time());
+    // if (new_msg->msg_type() == MsgType::PRIVATE){
+      // msg.set_group_id(0);
+    // }
+    // else{
+      // msg.set_group_id(new_msg->peer_id());
+    // }
+
+    // auto pong = new Pong;
+    // auto send_to_access_closure = new SendtoAccessClosure(cntl, pong);
+
+    // AccessService_Stub stub(channel_vec[j]);
+    // stub.SendtoAccess(cntl, &msg, pong, send_to_access_closure);
+  // }
+}
+
+void* LogicServiceImpl::SendtoPeers(void* args) {
+  std::unique_ptr<SendtoPeersArgs> lazy_delete(static_cast<SendtoPeersArgs*>(args));
+
+  tinyim::MsgIdRequest& id_request = (static_cast<SendtoPeersArgs*>(args))->id_request;
+  tinyim::MsgIdReply& id_reply = (static_cast<SendtoPeersArgs*>(args))->id_reply;
+  tinyim::user_id_t sender = static_cast<SendtoPeersArgs*>(args)->sender;
+  tinyim::NewMsg& new_msg = static_cast<SendtoPeersArgs*>(args)->new_msg;
+  tinyim::LogicServiceImpl* this_ = static_cast<SendtoPeersArgs*>(args)->this_;
+
+  tinyim::DbproxyService_Stub session_stub(this_->db_channel_);
   brpc::Controller session_cntl;
-  Sessions sessions;
-  UserIds user_ids;
+  tinyim::Sessions sessions;
+  tinyim::UserIds user_ids;
 
   for (int i = 1, size = id_request.user_ids_size(); i < size; ++i){
     // i = 0 is user_id
@@ -217,29 +339,29 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   session_stub.GetSessions(&session_cntl, &user_ids, &sessions, nullptr);
   if (session_cntl.Failed()){
     DLOG(ERROR) << "Fail to call GetSessions. " << session_cntl.ErrorText();
-    cntl->SetFailed(session_cntl.ErrorCode(), session_cntl.ErrorText().c_str());
-    return;
+    return nullptr;
   }
+  DLOG(INFO) << "GetSessions. response size=" << sessions.session_size();
   // CHECK_NE(msg_id, 0) << "Id is wrong. user_id=" << user_id;
   // reply->set_msg_id(msg_id);
 
   std::vector<brpc::Channel*> channel_vec;
   channel_vec.reserve(sessions.session_size());
   {
-    std::unique_lock<std::mutex> lck(access_map_mtx_);
+    std::unique_lock<std::mutex> lck(this_->access_map_mtx_);
     for (int i = 0, size = sessions.session_size(); i < size; ++i){
       if (!sessions.session(i).has_session()){
         continue;
       }
-      if (access_map_.count(sessions.session(i).addr()) == 0) {
+      if (this_->access_map_.count(sessions.session(i).addr()) == 0) {
         brpc::ChannelOptions options;
         options.protocol = brpc::PROTOCOL_BAIDU_STD;
         options.connection_type = FLAGS_access_connection_type;
         options.timeout_ms = FLAGS_access_timeout_ms/*milliseconds*/;
         options.max_retry = FLAGS_access_max_retry;
-        access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
+        this_->access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
       }
-      channel_vec.push_back(&(access_map_[sessions.session(i).addr()]));
+      channel_vec.push_back(&(this_->access_map_[sessions.session(i).addr()]));
     }
   }
   for (int i = 0, size = sessions.session_size(), j = 0; i < size; ++i){
@@ -247,19 +369,30 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
       continue;
     }
     auto cntl = new brpc::Controller;
-    Msg msg;
+    tinyim::Msg msg;
     // XXX const char*
-    msg.set_user_id(user_id);
-    msg.set_peer_id(user_ids.user_id(i));
-    msg.set_message(new_msg->message().c_str());
+    msg.set_user_id(user_ids.user_id(i));
+    msg.set_sender(sender);
+    msg.set_receiver(user_ids.user_id(i));
+    msg.set_message(new_msg.message().c_str());
     msg.set_msg_id(id_reply.msg_ids(i + 1).start_msg_id());
+    msg.set_client_time(new_msg.client_time());
+    msg.set_msg_time(new_msg.msg_time());
+    if (new_msg.msg_type() == MsgType::PRIVATE){
+      msg.set_group_id(0);
+    }
+    else{
+      msg.set_group_id(new_msg.peer_id());
+    }
 
     auto pong = new Pong;
     auto send_to_access_closure = new SendtoAccessClosure(cntl, pong);
 
-    AccessService_Stub stub(channel_vec[j]);
+    tinyim::AccessService_Stub stub(channel_vec[j]);
+    DLOG(INFO) << "Calling SendtoAccess. receiver=" << user_ids.user_id(i);
     stub.SendtoAccess(cntl, &msg, pong, send_to_access_closure);
   }
+  return nullptr;
 }
 
 void LogicServiceImpl::PullData(google::protobuf::RpcController* controller,
