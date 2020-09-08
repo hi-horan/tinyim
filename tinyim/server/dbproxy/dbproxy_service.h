@@ -67,6 +67,26 @@ class DbproxyServiceImpl : public DbproxyService {
                            const UserIds*,
                            Sessions*,
                            google::protobuf::Closure* done) override;
+
+  void GetMsgs(google::protobuf::RpcController* controller,
+               const MsgIdRange* msg_range,
+               Msgs* msgs,
+               google::protobuf::Closure* done) override;
+
+  void GetFriends(google::protobuf::RpcController* controller,
+                  const UserId* user_id,
+                  UserInfos* user_infos,
+                  google::protobuf::Closure* done) override;
+
+  void GetGroups(google::protobuf::RpcController* controller,
+                 const UserId* user_id,
+                 GroupInfos* group_infos,
+                 google::protobuf::Closure* done) override;
+
+  void GetGroupMembers(google::protobuf::RpcController* controller,
+                       const GroupId* group_id,
+                       UserInfos* user_infos,
+                       google::protobuf::Closure* done) override;
  private:
   void SetUserLastSendData_(const UserLastSendData* user_last_send_data);
 

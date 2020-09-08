@@ -65,6 +65,26 @@ class AccessServiceImpl : public AccessService {
                     Pong* pong,
                     google::protobuf::Closure* done) override;
 
+  void GetMsgs(google::protobuf::RpcController* controller,
+               const MsgIdRange* msg_range,
+               Msgs* msgs,
+               google::protobuf::Closure* done) override;
+
+  void GetFriends(google::protobuf::RpcController* controller,
+                  const UserId* user_id,
+                  UserInfos* user_infos,
+                  google::protobuf::Closure* done) override;
+
+  void GetGroups(google::protobuf::RpcController* controller,
+                 const UserId* user_id,
+                 GroupInfos* group_infos,
+                 google::protobuf::Closure* done) override;
+
+  void GetGroupMembers(google::protobuf::RpcController* controller,
+                       const GroupId* group_id,
+                       UserInfos* user_infos,
+                       google::protobuf::Closure* done) override;
+
   butil::Status ResetHeartBeatTimer(user_id_t user_id);
 
   butil::Status ClearUserData(user_id_t user_id);

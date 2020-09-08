@@ -54,6 +54,27 @@ message UserIds {
     repeated int64 user_id = 1;
 }
 
+message UserInfo {
+    int64 user_id = 1;
+    string name = 2;
+
+    // ...
+}
+
+message UserInfos {
+    repeated UserInfo user_info = 1;
+}
+
+message GroupInfo {
+    int64 group_id = 1;
+    string name = 2;
+
+    // ...
+}
+
+message GroupInfos {
+    repeated GroupInfo group_info = 1;
+}
 message UserAndMsgId {
     int64 user_id = 1;
     int64 msg_id = 2;
@@ -129,8 +150,15 @@ message MsgReply {
     // more data
 }
 
+message MsgIdRange {
+    int64 user_id = 1;
+    int64 start_msg_id = 2;
+    int64 end_msg_id = 3;
+}
+
 message Ping {
     int64 user_id = 1;
+
 }
 
 message Pong {

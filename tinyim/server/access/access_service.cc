@@ -12,7 +12,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-DEFINE_int32(recv_heartbeat_timeout_s, 30, "Receive heartbeat timeout");
+DEFINE_int32(recv_heartbeat_timeout_s, 400, "Receive heartbeat timeout");
 
 namespace tinyim {
 struct HeartBeatTimeoutArg{
@@ -44,9 +44,9 @@ AccessServiceImpl::~AccessServiceImpl() {
 }
 
 void AccessServiceImpl::Test(google::protobuf::RpcController* controller,
-                            const Ping* ping,
-                            Pong* pong,
-                            google::protobuf::Closure* done){
+                             const Ping* ping,
+                             Pong* pong,
+                             google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
   DLOG(INFO) << "Running test";
 }
@@ -116,14 +116,14 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
   const user_id_t user_id = new_msg->user_id();
   DLOG(INFO) << "Received request[log_id=" << cntl->log_id()
-            << "] from " << cntl->remote_side()
-            << " to " << cntl->local_side()
-            << " user_id=" << user_id
-            << " peer_id=" << new_msg->peer_id()
-            << " client_time=" << new_msg->client_time()
-            << " msg_type=" << new_msg->msg_type()
-            << " message=" << new_msg->message()
-            << " (attached=" << cntl->request_attachment() << ")";
+             << "] from " << cntl->remote_side()
+             << " to " << cntl->local_side()
+             << " user_id=" << user_id
+             << " peer_id=" << new_msg->peer_id()
+             << " client_time=" << new_msg->client_time()
+             << " msg_type=" << new_msg->msg_type()
+             << " message=" << new_msg->message()
+             << " (attached=" << cntl->request_attachment() << ")";
 
   ResetHeartBeatTimer(user_id);
   LogicService_Stub logic_stub(logic_channel_);
@@ -258,16 +258,16 @@ butil::Status AccessServiceImpl::ClearUserData(user_id_t user_id){
       }
       return butil::Status::OK();
   }
-  else{
+  else {
     lck.unlock();
     return butil::Status(EINVAL, "Have no this Closure");
   }
 }
 
 butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
-                                  google::protobuf::Closure* done,
-                                  Msgs* msgs,
-                                  brpc::Controller* cntl){
+                                                     google::protobuf::Closure* done,
+                                                     Msgs* msgs,
+                                                     brpc::Controller* cntl){
   const int bucket = user_id % kBucketNum;
   auto& id_map = id_map_[bucket];
   std::unique_ptr<HeartBeatTimeoutArg> lazy_delete;
@@ -310,9 +310,9 @@ butil::Status AccessServiceImpl::PushClosureAndReply(user_id_t user_id,
 }
 
 butil::Status AccessServiceImpl::PopClosureAndReply(user_id_t user_id,
-                                  google::protobuf::Closure** done,
-                                  Msgs** msgs,
-                                  brpc::Controller** cntl) {
+                                                    google::protobuf::Closure** done,
+                                                    Msgs** msgs,
+                                                    brpc::Controller** cntl) {
   brpc::ClosureGuard lazy_run;
   const int bucket = user_id % kBucketNum;
   auto& id_map = id_map_[bucket];
@@ -381,6 +381,86 @@ void AccessServiceImpl::ClearClosureAndReply() {
 }
 void AccessServiceImpl::Clear(){
   ClearClosureAndReply();
+}
+
+void AccessServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
+                                const MsgIdRange* msg_range,
+                                Msgs* msgs,
+                                google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  LogicService_Stub logic_stub(logic_channel_);
+  brpc::Controller logic_cntl;
+  logic_cntl.set_log_id(cntl->log_id());
+  // XXX consistent hash use id
+  logic_cntl.set_request_code(msg_range->user_id());
+
+  logic_stub.GetMsgs(&logic_cntl, msg_range, msgs, nullptr);
+  if (logic_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
+  }
+}
+
+void AccessServiceImpl::GetFriends(google::protobuf::RpcController* controller,
+                                   const UserId* user_id,
+                                   UserInfos* user_infos,
+                                   google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  LogicService_Stub logic_stub(logic_channel_);
+  brpc::Controller logic_cntl;
+  logic_cntl.set_log_id(cntl->log_id());
+  // XXX consistent hash use id
+  logic_cntl.set_request_code(user_id->user_id());
+
+  logic_stub.GetFriends(&logic_cntl, user_id, user_infos, nullptr);
+  if (logic_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
+  }
+}
+
+void AccessServiceImpl::GetGroups(google::protobuf::RpcController* controller,
+                                  const UserId* user_id,
+                                  GroupInfos* group_infos,
+                                  google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  LogicService_Stub logic_stub(logic_channel_);
+  brpc::Controller logic_cntl;
+  logic_cntl.set_log_id(cntl->log_id());
+  // XXX consistent hash use id
+  logic_cntl.set_request_code(user_id->user_id());
+
+  logic_stub.GetGroups(&logic_cntl, user_id, group_infos, nullptr);
+  if (logic_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
+  }
+}
+
+void AccessServiceImpl::GetGroupMembers(google::protobuf::RpcController* controller,
+                                        const GroupId* group_id,
+                                        UserInfos* user_infos,
+                                        google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  LogicService_Stub logic_stub(logic_channel_);
+  brpc::Controller logic_cntl;
+  logic_cntl.set_log_id(cntl->log_id());
+  // XXX consistent hash use id
+  logic_cntl.set_request_code(group_id->group_id());
+
+  logic_stub.GetGroupMembers(&logic_cntl, group_id, user_infos, nullptr);
+  if (logic_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
+  }
 }
 
 }  // namespace tinyim

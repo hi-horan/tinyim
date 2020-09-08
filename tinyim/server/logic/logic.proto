@@ -11,4 +11,10 @@ service LogicService {
 
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (Msgs);
+
+    rpc GetMsgs(MsgIdRange) returns (Msgs);
+    rpc GetFriends(UserId) returns (UserInfos);
+    rpc GetGroups(UserId) returns (GroupInfos);
+    rpc GetGroupMembers(GroupId) returns (UserInfos);
+
 }

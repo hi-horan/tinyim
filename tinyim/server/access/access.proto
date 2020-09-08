@@ -8,7 +8,7 @@ option cc_generic_services = true;
 
 service AccessService {
     rpc Test(Ping) returns (Pong);
-    
+
     // Register
     rpc SignIn(SigninData) returns (Pong);
     rpc SignOut(UserId) returns (Pong);
@@ -21,6 +21,12 @@ service AccessService {
 
     rpc SendMsg(NewMsg) returns (MsgReply);
     rpc PullData(Ping) returns (Msgs);
+
+    rpc GetMsgs(MsgIdRange) returns (Msgs);
+    rpc GetFriends(UserId) returns (UserInfos);
+    rpc GetGroups(UserId) returns (GroupInfos);
+    rpc GetGroupMembers(GroupId) returns (UserInfos);
+
 
     // rpc CreateStream(Ping) returns (Pong);
     rpc HeartBeat(Ping) returns (Pong);

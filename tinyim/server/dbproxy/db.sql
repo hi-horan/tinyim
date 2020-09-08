@@ -78,7 +78,9 @@ insert into users(user_id, name, access_hash, phone) values(12345, "12345", 123,
 insert into users(user_id, name, access_hash, phone) values(123456, "123456", 123, 123456789);
 insert into users(user_id, name, access_hash, phone) values(1234567, "1234567", 123, 123456789);
 
+DROP TABLE IF EXISTS `friends`;
 CREATE TABLE `friends` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` bigint(20) NOT NULL,
   `peer_id` bigint(20) NOT NULL,
   -- `contact_user_id` int(11) NOT NULL,
@@ -92,7 +94,8 @@ CREATE TABLE `friends` (
   -- `date2` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`user_id`)
+  key `user_id_and_peer_id`(`user_id`, `peer_id`),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `messages` (

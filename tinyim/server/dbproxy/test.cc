@@ -43,7 +43,62 @@ DEFINE_int32(redis_max_retry, 3, "Max retries(not including the first RPC)");
 
 using namespace tinyim;
 
-int main(int argc, char* argv[]) {
+
+
+int test1() {
+  using namespace tinyim;
+  soci::connection_pool pool(10);
+  for (int i = 0; i < 10; ++i){
+    pool.at(i).open(FLAGS_db_name, FLAGS_db_connect_info);
+  }
+  auto msgs = std::make_unique<Msgs>();
+
+  user_id_t user_id = 123;
+  msg_id_t start_msg_id = 0;
+  msg_id_t end_msg_id = 100000;
+
+  try {
+    soci::session sql(pool);
+    // soci::indicator ind;
+    soci::rowset<soci::row> rs = (sql.prepare << "SELECT sender, receiver, msg_id, group_id, message, "
+                                                  "UNIX_TIMESTAMP(client_time), UNIX_TIMESTAMP(msg_time) "
+                                                "FROM messages "
+                                                "WHERE user_id = :user_id AND msg_id BETWEEN :start_msg_id AND :end_msg_id and deleted = 0",
+                                                soci::use(user_id),
+                                                soci::use(start_msg_id),
+                                                soci::use(end_msg_id));
+
+    for (auto it = rs.begin(); it != rs.end(); ++it) {
+      soci::row const& row = *it;
+
+      auto msg = msgs->add_msg();
+      msg->set_user_id(user_id);
+      msg->set_sender(row.get<long long>(0));
+      msg->set_receiver(row.get<long long>(1));
+      msg->set_msg_id(row.get<long long>(2));
+      msg->set_group_id(row.get<long long>(3));
+      msg->set_message(row.get<std::string>(4));
+      msg->set_client_time(static_cast<int>(row.get<long long>(5)));
+      msg->set_msg_time(static_cast<int>(row.get<long long>(6)));
+
+      DLOG(INFO) << "user_id=" << msg->user_id()
+                << " sender=" << msg->sender()
+                << " receiver=" << msg->receiver()
+                << " msg_id=" << msg->msg_id()
+                << " group_id=" << msg->group_id()
+                << " message=" << msg->message()
+                << " client_time=" << msg->client_time()
+                << " msg_time=" << msg->msg_time();
+    }
+  }
+  catch (const soci::soci_error& err) {
+    LOG(ERROR) << err.what();
+  }
+
+  return 0;
+}
+
+int test2(int argc, char* argv[]) {
   tinyim::Initialize init(argc, &argv);
 
   soci::connection_pool pool(10);
@@ -82,6 +137,12 @@ int main(int argc, char* argv[]) {
             << "msg_time=" << msg_time << " "
             << "msg_id=" << msg_id << " ";
 
+
+  return 0;
+}
+
+int main(int argc, char* argv[]) {
+  test1();
 
   return 0;
 }

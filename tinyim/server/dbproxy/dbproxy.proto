@@ -62,4 +62,9 @@ service DbproxyService {
 
 
     rpc GetSessions(UserIds) returns (Sessions);
+
+    rpc GetMsgs(MsgIdRange) returns (Msgs);
+    rpc GetFriends(UserId) returns (UserInfos);
+    rpc GetGroups(UserId) returns (GroupInfos);
+    rpc GetGroupMembers(GroupId) returns (UserInfos);
 }

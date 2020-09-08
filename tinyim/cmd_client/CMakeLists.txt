@@ -20,8 +20,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-invalid-offsetof"
 
 add_executable(${PROJECT_NAME}
     client.cc
-    linenoise.c
-    linenoise.h
 )
 
 message("--------------------------cmake current binary dir=${CMAKE_CURRENT_BINARY_DIR}")
@@ -44,5 +42,6 @@ target_link_libraries(${PROJECT_NAME}
         glog::glog
         leveldb::leveldb
         tinyim::proto
+        readline
         dl
 )

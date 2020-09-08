@@ -7,10 +7,10 @@
 #include <bthread/bthread.h>
 #include <bthread/unstable.h>
 #include <brpc/stream.h>
-// #include <butil/logging.h>
 #include <butil/time.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
-#include "linenoise.h"
 #include "type.h"
 #include "util/initialize.h"
 
@@ -19,26 +19,42 @@ DEFINE_string(connection_type, "single", "Connection type. Available values: sin
 DEFINE_string(server, "0.0.0.0:5000", "IP Address of server");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
-DEFINE_int32(internal_send_heartbeat_s, 30, "Internal time that send heartbeat");
+DEFINE_int32(internal_send_heartbeat_s, 300, "Internal time that send heartbeat");
 DEFINE_int32(user_id, 123, "Internal time that send heartbeat");
 DEFINE_string(password, "xxxxxx", "user password");
 
 namespace tinyim {
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-  if (buf[0] == 's') {
-    linenoiseAddCompletion(lc,"sendmsgto");
+struct Freer {
+  void operator()(char* mem) {
+    ::free(mem);
   }
+};
+
+static bool g_canceled = false;
+static int cli_getc(FILE *stream) {
+    int c = getc(stream);
+    if (c == EOF && errno == EINTR) {
+        g_canceled = true;
+        return '\n';
+    }
+    return c;
 }
 
-const char *hints(const char *buf, int *color, int *bold) {
-  if (!strcasecmp(buf,"sendmsgto")) {
-    *color = 35;
-    *bold = 0;
-    return " <userid> <msg>";
-  }
-  return NULL;
-}
+// void completion(const char *buf, linenoiseCompletions *lc) {
+  // if (buf[0] == 's') {
+    // linenoiseAddCompletion(lc,"sendmsgto");
+  // }
+// }
+
+// const char *hints(const char *buf, int *color, int *bold) {
+  // if (!strcasecmp(buf,"sendmsgto")) {
+    // *color = 35;
+    // *bold = 0;
+    // return " <userid> <msg>";
+  // }
+  // return NULL;
+// }
 
 struct PullDataArgs {
   tinyim::user_id_t user_id;
@@ -65,7 +81,8 @@ void* PullData(void *arg){
     stub.PullData(&cntl, &ping, &msgs, nullptr);
     if (cntl.Failed()){
       std::cout << "Fail to call PullData. " << cntl.ErrorText() << std::endl;
-      return nullptr;
+      bthread_usleep(1000000L);
+      continue;
     }
     const size_t msg_size = msgs.msg_size();
     if (msg_size > 0){
@@ -148,7 +165,6 @@ void HeartBeatTimeOutHeadler(void* arg){
   stub.HeartBeat(&cntl, &ping, &pong, nullptr);
   if (cntl.Failed()){
     std::cout << "Fail to call heartbeat. " << cntl.ErrorText() << std::endl;
-    return;
   }
   else{
     auto last_msg_id = pong.last_msg_id();
@@ -177,26 +193,10 @@ void HeartBeatTimeOutHeadler(void* arg){
 
 int main(int argc, char* argv[]) {
   tinyim::Initialize init(argc, &argv);
+  rl_getc_function = tinyim::cli_getc;
 
-  char *line;
-  char *prgname = argv[0];
-  while(argc > 1) {
-    argc--;
-    argv++;
-    if (!strcmp(*argv,"--multiline")) {
-      linenoiseSetMultiLine(1);
-      printf("Multi-line mode enabled.\n");
-    } else if (!strcmp(*argv,"--keycodes")) {
-      linenoisePrintKeyCodes();
-      exit(0);
-    } else {
-      fprintf(stderr, "Usage: %s [--multiline] [--keycodes]\n", prgname);
-      exit(1);
-    }
-  }
-  linenoiseSetCompletionCallback(tinyim::completion);
-  linenoiseSetHintsCallback(tinyim::hints);
-  linenoiseHistoryLoad("history.txt");
+  // char *line;
+  // char *prgname = argv[0];
 
   brpc::Channel channel;
   brpc::ChannelOptions options;
@@ -228,6 +228,9 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   }
+
+
+  
 
   // brpc::Controller stream_cntl;
   // brpc::StreamId stream;
@@ -270,13 +273,47 @@ int main(int argc, char* argv[]) {
 
   size_t str_len = strlen("sendmsgto ");
   int last_send_time = 0;
-  while (!brpc::IsAskedToQuit() && (line = linenoise("tinyim> ")) != nullptr) {
-    const std::string lne(line);
+
+
+  while (!brpc::IsAskedToQuit()) {
+    char prompt[64];
+    snprintf(prompt, sizeof(prompt), "user_id(%ld) access(%s)> ", user_id, FLAGS_server.c_str());
+    std::unique_ptr<char, tinyim::Freer> command(::readline(prompt));
+    if (command == NULL || *command == '\0') {
+      if (tinyim::g_canceled) {
+        // No input after the prompt and user pressed Ctrl-C,
+        // quit the CLI.
+        return 0;
+      }
+      // User entered an empty command by just pressing Enter.
+      continue;
+    }
+    if (tinyim::g_canceled) {
+      // User entered sth. and pressed Ctrl-C, start a new prompt.
+      tinyim::g_canceled = false;
+      continue;
+    }
+    // Add user's command to history so that it's browse-able by
+    // UP-key and search-able by Ctrl-R.
+    ::add_history(command.get());
+
+    if (!strcmp(command.get(), "help")) {
+      printf("This is a redis CLI written in brpc.\n");
+      continue;
+    }
+    if (!strcmp(command.get(), "quit")) {
+      // Although quit is a valid redis command, it does not make
+      // too much sense to run it in this CLI, just quit.
+      return 0;
+    }
+
+    const std::string lne(command.get());
 
     if (lne[0] != '\0' && lne[0] != '/' && lne.size() > str_len
         && !strncmp(lne.c_str(), "sendmsgto ", str_len)) {
 
-      const tinyim::user_id_t peer_id = strtoll(line + str_len, nullptr, 10);
+      const tinyim::user_id_t peer_id = strtoll(command.get() + str_len, nullptr, 10);
+      assert(peer_id != user_id);
       auto offset = lne.find_last_of(' ');
       const std::string msg(lne.begin() + offset + 1, lne.end());
 
@@ -289,8 +326,9 @@ int main(int argc, char* argv[]) {
       int msg_time = std::time(nullptr);
       if (msg_time == last_send_time){
         ++msg_time;
-        last_send_time = msg_time;
       }
+      last_send_time = msg_time;
+
       new_msg.set_client_time(msg_time);
       std::cout << "userid=" << user_id
                 << " peer_id=" << peer_id
@@ -299,63 +337,39 @@ int main(int argc, char* argv[]) {
                 << " timestamp=" << new_msg.client_time() << std::endl;
 
       brpc::Controller cntl;
-      tinyim::MsgReply msg_reply;
       tinyim::AccessService_Stub stub(&channel);
 
       bthread_timer_del(heartbeatarg.heartbeat_timeout_id);
 
       std::cout << "Calling SendMsg" << std::endl;
-      // TODO should be async
-      stub.SendMsg(&cntl, &new_msg, &msg_reply, nullptr);
 
-      if (cntl.Failed()){
-        std::cout << "Fail to SendMsg, " << cntl.ErrorText() << std::endl;
-        return -1;
+      while (!brpc::IsAskedToQuit()) {
+        tinyim::MsgReply msg_reply;
+        stub.SendMsg(&cntl, &new_msg, &msg_reply, nullptr);
+        if (cntl.Failed()){
+          std::cout << "Fail to SendMsg, " << cntl.ErrorText() << std::endl;
+          usleep(1000000L);
+        }
+        else{
+          std::cout << "Received msgreply."
+                    << " msgid=" << msg_reply.msg_id()
+                    << " last_msg_id=" << msg_reply.last_msg_id()
+                    << " msg_time=" << msg_reply.msg_time() << std::endl;
+          cur_msg_id = msg_reply.msg_id();
+          heartbeatarg.cur_user_id = cur_msg_id;
+          if (msg_reply.last_msg_id() > cur_msg_id){
+            // TODO need pull msg
+          }
+          const int64_t cur_time_us = butil::gettimeofday_us();
+          bthread_timer_add(&heartbeatarg.heartbeat_timeout_id,
+                            butil::microseconds_to_timespec(cur_time_us + heartbeat_timeout_us),
+                            tinyim::HeartBeatTimeOutHeadler,
+                            &heartbeatarg);
+          break;
+        }
       }
-      std::cout << "Received msgreply."
-                << " msgid=" << msg_reply.msg_id()
-                << " last_msg_id=" << msg_reply.last_msg_id()
-                << " msg_time=" << msg_reply.msg_time();
-
-      cur_msg_id = msg_reply.msg_id();
-      heartbeatarg.cur_user_id = cur_msg_id;
-      if (msg_reply.last_msg_id() > cur_msg_id){
-        // TODO need pull msg
-      }
-      const int64_t cur_time_us = butil::gettimeofday_us();
-      bthread_timer_add(&heartbeatarg.heartbeat_timeout_id,
-                        butil::microseconds_to_timespec(cur_time_us + heartbeat_timeout_us),
-                        tinyim::HeartBeatTimeOutHeadler,
-                        &heartbeatarg);
-
-
-
-
-
-      linenoiseHistoryAdd(line);
-      linenoiseHistorySave("history.txt");
-    } else if (!strncmp(line,"/historylen",11)) {
-      int len = atoi(line+11);
-      linenoiseHistorySetMaxLen(len);
-    } else if (!strncmp(line, "/mask", 5)) {
-      linenoiseMaskModeEnable();
-    } else if (!strncmp(line, "/unmask", 7)) {
-      linenoiseMaskModeDisable();
-    } else if (line[0] == '/') {
-      printf("Unreconized command: %s\n", line);
     }
-    free(line);
   }
-
-  std::cout << "access_client is going to quit" << std::endl;
+  std::cout << "client is going to quit" << std::endl;
   return 0;
 }
-
-// static int fastio = []() {
-    // #define endl '\n'
-    // std::ios::sync_with_stdio(false);
-    // std::cin.tie(NULL);
-    // std::cout.tie(0);
-    // return 0;
-// }();
-

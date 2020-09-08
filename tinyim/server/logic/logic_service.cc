@@ -240,6 +240,8 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   }
 
   sendto_peers_args->new_msg = *new_msg;
+
+  sendto_peers_args->new_msg.set_msg_time(msg_time);
   sendto_peers_args->this_ = this;
 
   bthread_t bt;
@@ -351,6 +353,7 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
     std::unique_lock<std::mutex> lck(this_->access_map_mtx_);
     for (int i = 0, size = sessions.session_size(); i < size; ++i){
       if (!sessions.session(i).has_session()){
+        DLOG(INFO) << "user_id=" << sessions.session(i).user_id() << " has no session";
         continue;
       }
       if (this_->access_map_.count(sessions.session(i).addr()) == 0) {
@@ -359,11 +362,13 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
         options.connection_type = FLAGS_access_connection_type;
         options.timeout_ms = FLAGS_access_timeout_ms/*milliseconds*/;
         options.max_retry = FLAGS_access_max_retry;
+        DLOG(INFO) << "Insert access_map. key" << sessions.session(i).addr();
         this_->access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
       }
       channel_vec.push_back(&(this_->access_map_[sessions.session(i).addr()]));
     }
   }
+  DLOG(INFO) << "channel_vec size=" << channel_vec.size();
   for (int i = 0, size = sessions.session_size(), j = 0; i < size; ++i){
     if (!sessions.session(i).has_session()){
       continue;
@@ -401,6 +406,34 @@ void LogicServiceImpl::PullData(google::protobuf::RpcController* controller,
                                 google::protobuf::Closure* done){
 
   // ResetHeartBeatTimer(user_id);
+}
+
+void LogicServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
+                               const MsgIdRange* msg_range,
+                               Msgs* msgs,
+                               google::protobuf::Closure* done) {
+
+}
+
+void LogicServiceImpl::GetFriends(google::protobuf::RpcController* controller,
+                                  const UserId* user_id,
+                                  UserInfos* user_infos,
+                                  google::protobuf::Closure* done) {
+
+}
+
+void LogicServiceImpl::GetGroups(google::protobuf::RpcController* controller,
+                                 const UserId* user_id,
+                                 GroupInfos* group_infos,
+                                 google::protobuf::Closure* done) {
+
+}
+
+void LogicServiceImpl::GetGroupMembers(google::protobuf::RpcController* controller,
+                                       const GroupId* group_id,
+                                       UserInfos* user_infos,
+                                       google::protobuf::Closure* done) {
+
 }
 
 }  // namespace tinyim
