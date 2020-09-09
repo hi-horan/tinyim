@@ -84,14 +84,15 @@ void* PullData(void *arg){
       bthread_usleep(1000000L);
       continue;
     }
+    // bthread_usleep(1000000L);
     const size_t msg_size = msgs.msg_size();
     if (msg_size > 0){
-      std::cout << "Received pull reply" << std::endl;
+      std::cout << std::endl;
+      std::cout << "  Received msg:" << std::endl;
     }
     for (size_t i = 0; i < msg_size; ++i){
       const Msg& msg = msgs.msg(i);
-
-      std::cout << "Received pull reply. userid=" << msg.user_id()
+      std::cout << "    userid=" << msg.user_id()
                 << " sender=" << msg.sender()
                 << " receiver=" << msg.receiver()
                 << " msgid=" << msg.msg_id()
@@ -212,25 +213,117 @@ int main(int argc, char* argv[]) {
 
   const tinyim::user_id_t user_id = FLAGS_user_id;
   {
-  brpc::Controller cntl;
-  tinyim::SigninData signin_data;
-  signin_data.set_user_id(user_id);
-  signin_data.set_password(FLAGS_password);
-  tinyim::Pong pong;
-  tinyim::AccessService_Stub stub(&channel);
+    tinyim::SigninData signin_data;
+    signin_data.set_user_id(user_id);
+    signin_data.set_password(FLAGS_password);
+    tinyim::Pong pong;
 
-
-  std::cout << "Calling Signin" << std::endl;
-  // TODO should be async
-  stub.SignIn(&cntl, &signin_data, &pong, nullptr);
-  if (cntl.Failed()){
-    std::cout << "Fail to call Signin. " << cntl.ErrorText() << std::endl;
-    return 0;
+    std::cout << "Calling Signin" << std::endl;
+    brpc::Controller cntl;
+    tinyim::AccessService_Stub stub(&channel);
+    // TODO should be async
+    stub.SignIn(&cntl, &signin_data, &pong, nullptr);
+    if (cntl.Failed()){
+      std::cout << "Fail to call Signin. " << cntl.ErrorText() << std::endl;
+      return 0;
+    }
   }
+  {
+    tinyim::UserId userid;
+    userid.set_user_id(user_id);
+    tinyim::UserInfos user_infos;
+
+    std::cout << "Calling GetFriends" << std::endl;
+    brpc::Controller cntl;
+    tinyim::AccessService_Stub stub(&channel);
+    stub.GetFriends(&cntl, &userid, &user_infos, nullptr);
+    if (cntl.Failed()){
+      std::cout << "Fail to call GetFriends. " << cntl.ErrorText() << std::endl;
+      return 0;
+    }
+    std::cout << "  friends:" << std::endl;
+    for (int i = 0; i < user_infos.user_info_size(); ++i){
+      std::cout << "    user_id=" << user_infos.user_info(i).user_id()
+                << " user_name=" << user_infos.user_info(i).name() << std::endl;
+
+    }
   }
 
+  tinyim::GroupInfos group_infos;
+  {
+    tinyim::UserId userid;
+    userid.set_user_id(user_id);
 
-  
+    std::cout << "Calling GetGroups" << std::endl;
+    brpc::Controller cntl;
+    tinyim::AccessService_Stub stub(&channel);
+    stub.GetGroups(&cntl, &userid, &group_infos, nullptr);
+    if (cntl.Failed()){
+      std::cout << "Fail to call GetGroups. " << cntl.ErrorText() << std::endl;
+      return 0;
+    }
+    std::cout << "  groups:" << cntl.ErrorText() << std::endl;
+    for (int i = 0; i < group_infos.group_info_size(); ++i){
+      std::cout << "    group_id=" << group_infos.group_info(i).group_id()
+                << " group_name=" << group_infos.group_info(i).name() << std::endl;
+
+    }
+  }
+  {
+
+    for (int i = 0; i < group_infos.group_info_size(); ++i){
+      tinyim::GroupId group_id;
+      group_id.set_group_id(group_infos.group_info(i).group_id());
+      tinyim::UserInfos user_infos;
+
+      std::cout << "Calling GetGroups" << std::endl;
+      brpc::Controller cntl;
+      tinyim::AccessService_Stub stub(&channel);
+      stub.GetGroupMembers(&cntl, &group_id, &user_infos, nullptr);
+      if (cntl.Failed()){
+        std::cout << "Fail to call GetGroups. " << cntl.ErrorText() << std::endl;
+        return 0;
+      }
+      std::cout << "  group_id=" << group_id.group_id() << std::endl;
+      for (int i = 0; i < user_infos.user_info_size(); ++i){
+        std::cout << "    user_id=" << user_infos.user_info(i).user_id()
+                  << " user_name=" << user_infos.user_info(i).name() << std::endl;
+
+      }
+    }
+  }
+
+  {
+    tinyim::MsgIdRange msg_range;
+    msg_range.set_user_id(user_id);
+    msg_range.set_start_msg_id(0);
+    msg_range.set_end_msg_id(100000);
+    tinyim::Msgs msgs;
+
+    std::cout << "Calling GetMsgs" << std::endl;
+    brpc::Controller cntl;
+    tinyim::AccessService_Stub stub(&channel);
+    stub.GetMsgs(&cntl, &msg_range, &msgs, nullptr);
+    if (cntl.Failed()){
+      std::cout << "Fail to call GetMsgs. " << cntl.ErrorText() << std::endl;
+      return 0;
+    }
+    std::cout << "  total msg=" << msgs.msg_size() << std::endl;
+    for (int i = 0; i < msgs.msg_size(); ++i){
+      if (i == 0 || i == msgs.msg_size() - 1){
+        std::cout << "    msg_id=" << msgs.msg(i).msg_id()
+                  << " user_id=" << msgs.msg(i).user_id()
+                  << " message=" << msgs.msg(i).message()
+                  << " msg_time=" << msgs.msg(i).msg_time()
+                  << " client_time=" << msgs.msg(i).client_time()
+                  << " receiver=" << msgs.msg(i).receiver()
+                  << " group_id=" << msgs.msg(i).group_id()
+                  << " sender=" << msgs.msg(i).sender() << std::endl;
+      }
+
+    }
+  }
+
 
   // brpc::Controller stream_cntl;
   // brpc::StreamId stream;
@@ -269,7 +362,6 @@ int main(int argc, char* argv[]) {
 
   // LOG(INFO) << "Created Stream=" << stream;
   // const tinyim::MsgId tmp_msg_id = 12345;
-  const auto msg_type = tinyim::MsgType::PRIVATE;
 
   size_t str_len = strlen("sendmsgto ");
   int last_send_time = 0;
@@ -314,6 +406,16 @@ int main(int argc, char* argv[]) {
 
       const tinyim::user_id_t peer_id = strtoll(command.get() + str_len, nullptr, 10);
       assert(peer_id != user_id);
+
+      auto msg_type = tinyim::MsgType::PRIVATE;
+      for (int i = 0; i < group_infos.group_info_size(); ++i){
+        if (peer_id == group_infos.group_info(i).group_id()){
+          msg_type = tinyim::MsgType::GROUP;
+          break;
+        }
+      }
+
+
       auto offset = lne.find_last_of(' ');
       const std::string msg(lne.begin() + offset + 1, lne.end());
 

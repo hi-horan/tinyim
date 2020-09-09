@@ -132,17 +132,18 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
     GroupId group_id;
     group_id.set_group_id(new_msg->peer_id());
     brpc::Controller db_cntl;
-    UserIds user_ids;
+    UserInfos user_infos;
+    // UserIds user_ids;
     db_cntl.set_log_id(cntl->log_id());
-    db_stub.GetGroupMember(&db_cntl, &group_id, &user_ids, nullptr);
+    db_stub.GetGroupMembers(&db_cntl, &group_id, &user_infos, nullptr);
     if (db_cntl.Failed()){
       DLOG(ERROR) << "Fail to call GetGroupMember. " << db_cntl.ErrorText();
       cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
       return;
     }
     else {
-      for (int i = 0; i < user_ids.user_id_size(); ++i){
-        const user_id_t cur_user_id = user_ids.user_id(i);
+      for (int i = 0; i < user_infos.user_info_size(); ++i){
+        const user_id_t cur_user_id = user_infos.user_info(i).user_id();
         if (cur_user_id == user_id){
           continue;
         }
@@ -218,7 +219,7 @@ void LogicServiceImpl::SendMsg(google::protobuf::RpcController* controller,
       puser_and_msgid->set_user_id(id_reply.msg_ids(i).user_id());
       puser_and_msgid->set_msg_id(id_reply.msg_ids(i).start_msg_id());
     }
-    DLOG_IF(INFO, msg_id > 0) << "Fail to get id from idgen msg_id=" << msg_id << " user_id=" << user_id;
+    DLOG_IF(INFO, msg_id == 0) << "Fail to get id from idgen msg_id=" << msg_id << " user_id=" << user_id;
     new_group_msg.set_sender_msg_id(msg_id);
     DbproxyService_Stub db_stub2(db_channel_);
     brpc::Controller db_cntl;
@@ -334,7 +335,7 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
   tinyim::UserIds user_ids;
 
   for (int i = 1, size = id_request.user_ids_size(); i < size; ++i){
-    // i = 0 is user_id
+    // i = 0 is sender
     user_ids.add_user_id(id_request.user_ids(i).user_id());
   }
 
@@ -344,6 +345,13 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
     return nullptr;
   }
   DLOG(INFO) << "GetSessions. response size=" << sessions.session_size();
+  for (int i = 0; i < user_ids.user_id_size(); ++i){
+    DLOG(INFO) << "i= " << i
+               << "user_id=" << user_ids.user_id(i)
+               << " session addr=" << sessions.session(i).addr()
+               << ". " << sessions.session(i).user_id();
+
+  }
   // CHECK_NE(msg_id, 0) << "Id is wrong. user_id=" << user_id;
   // reply->set_msg_id(msg_id);
 
@@ -366,6 +374,7 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
         this_->access_map_[sessions.session(i).addr()].Init(sessions.session(i).addr().c_str(), &options);
       }
       channel_vec.push_back(&(this_->access_map_[sessions.session(i).addr()]));
+      DLOG(INFO) << "channel_vec idx=" << channel_vec.size() - 1 << "session addr=" << sessions.session(i).addr();
     }
   }
   DLOG(INFO) << "channel_vec size=" << channel_vec.size();
@@ -394,8 +403,9 @@ void* LogicServiceImpl::SendtoPeers(void* args) {
     auto send_to_access_closure = new SendtoAccessClosure(cntl, pong);
 
     tinyim::AccessService_Stub stub(channel_vec[j]);
-    DLOG(INFO) << "Calling SendtoAccess. receiver=" << user_ids.user_id(i);
+    DLOG(INFO) << "Calling SendtoAccess. receiver=" << user_ids.user_id(i) << " channel_vec idx=" << j;
     stub.SendtoAccess(cntl, &msg, pong, send_to_access_closure);
+    ++j;
   }
   return nullptr;
 }
@@ -405,6 +415,8 @@ void LogicServiceImpl::PullData(google::protobuf::RpcController* controller,
                                 Msgs* msgs,
                                 google::protobuf::Closure* done){
 
+  brpc::ClosureGuard done_guard(done);
+  DLOG(ERROR) << "TODO PullData";
   // ResetHeartBeatTimer(user_id);
 }
 
@@ -412,6 +424,18 @@ void LogicServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
                                const MsgIdRange* msg_range,
                                Msgs* msgs,
                                google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+  DbproxyService_Stub db_stub(db_channel_);
+  brpc::Controller db_cntl;
+  db_cntl.set_log_id(cntl->log_id());
+
+  db_stub.GetMsgs(&db_cntl, msg_range, msgs, nullptr);
+  if (db_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call GetMsgs. " << db_cntl.ErrorText();
+      cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
+  }
 
 }
 
@@ -419,21 +443,54 @@ void LogicServiceImpl::GetFriends(google::protobuf::RpcController* controller,
                                   const UserId* user_id,
                                   UserInfos* user_infos,
                                   google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+  DbproxyService_Stub db_stub(db_channel_);
+  brpc::Controller db_cntl;
+  db_cntl.set_log_id(cntl->log_id());
+
+  db_stub.GetFriends(&db_cntl, user_id, user_infos, nullptr);
+  if (db_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call GetFriends. " << db_cntl.ErrorText();
+      cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
+  }
 }
 
 void LogicServiceImpl::GetGroups(google::protobuf::RpcController* controller,
                                  const UserId* user_id,
                                  GroupInfos* group_infos,
                                  google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+  DbproxyService_Stub db_stub(db_channel_);
+  brpc::Controller db_cntl;
+  db_cntl.set_log_id(cntl->log_id());
+
+  db_stub.GetGroups(&db_cntl, user_id, group_infos, nullptr);
+  if (db_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call GetGroups. " << db_cntl.ErrorText();
+      cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
+  }
 }
 
 void LogicServiceImpl::GetGroupMembers(google::protobuf::RpcController* controller,
                                        const GroupId* group_id,
                                        UserInfos* user_infos,
                                        google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+  DbproxyService_Stub db_stub(db_channel_);
+  brpc::Controller db_cntl;
+  db_cntl.set_log_id(cntl->log_id());
+
+  db_stub.GetGroupMembers(&db_cntl, group_id, user_infos, nullptr);
+  if (db_cntl.Failed()) {
+      DLOG(ERROR) << "Fail to call GetGroupMembers. " << db_cntl.ErrorText();
+      cntl->SetFailed(db_cntl.ErrorCode(), db_cntl.ErrorText().c_str());
+  }
 }
 
 }  // namespace tinyim

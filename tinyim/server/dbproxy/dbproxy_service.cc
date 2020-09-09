@@ -82,8 +82,6 @@ void DbproxyServiceImpl::GetSessions(google::protobuf::RpcController* controller
                                      google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
   std::ostringstream oss;
-  // oss << "MGET {1234}a {123}a {asdfasdf}a";
-  // int size = 3;
   oss << "MGET ";
   int size = user_ids->user_id_size();
   for (int i = 0; i < size; ++i){
@@ -158,11 +156,9 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
     auto peer_pool = ChooseDatabase(new_msg->receiver());
     if (pool == peer_pool){
       soci::session sql(*pool);
-      // sql << "INSERT INTO msssages(user_id, peer_id, msg_id, group_id, message, client_time, msg_time) "
       sql << "INSERT INTO messages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
              "VALUES (:user_id, :sender, :receiver, :msg_id, :group_id, :message, FROM_UNIXTIME(:client_time), FROM_UNIXTIME(:msg_time)), "
              "(:receiver2, :sender2, :receiver2, :receiver_msg_id2, :group_id2, :message2, FROM_UNIXTIME(:client_time2), FROM_UNIXTIME(:msg_time2));",
-             // "(:user_id2, :sender2, :receiver2, :msg_id2, :group_id2, :message2, FROM_UNIXTIME(:client_time2), FROM_UNIXTIME(:msg_time2));",
              soci::use(new_msg->sender()),
              soci::use(new_msg->sender()),
              soci::use(new_msg->receiver()),
@@ -185,17 +181,11 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
              soci::use(new_msg->msg_time());
 
       LOG(INFO) << "sql= " << sql.get_query();
-
-             // soci::use(0),
-             // soci::use(new_msg->message()),
-             // soci::use(new_msg->client_time()),
-             // soci::use(new_msg->msg_time());
     }
     else{
       {
         soci::session sql(*pool);
-        // sql << "INSERT INTO msssages(user_id, peer_id, msg_id, group_id, message, client_time, msg_time) "
-        sql << "INSERT INTO msssages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
+        sql << "INSERT INTO messages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
                "VALUES (:user_id, :sender, :receiver, :msg_id, :group_id, :message, FROM_UNIXTIME(:client_time), FROM_UNIXTIME(:msg_time));",
                soci::use(new_msg->sender()),
                soci::use(new_msg->sender()),
@@ -209,7 +199,7 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
       }
       {
         soci::session sql(*peer_pool);
-        sql << "INSERT INTO msssages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
+        sql << "INSERT INTO messages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
                "VALUES (:user_id, :sender, :receiver, :receiver_msg_id, :group_id, :message, FROM_UNIXTIME(:client_send), FROM_UNIXTIME(:msg_time));",
                soci::use(new_msg->receiver()),
                soci::use(new_msg->sender()),
@@ -249,28 +239,12 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
   const user_id_t sender_user_id = new_group_msg->sender_user_id();
   const group_id_t group_id = new_group_msg->group_id();
   try {
-
-    auto pool = ChooseDatabase(sender_user_id);
-    soci::session sql(*pool);
-    // sql << "INSERT INTO msssages(user_id, peer_id, msg_id, group_id, message, client_send, msg_time) "
-    sql << "INSERT INTO msssages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
-            "VALUES (:user_id, :sender, :receiver, :msg_id, :group_id, :message, FROM_UNIXTIME(:client_time), FROM_UNIXTIME(:msg_time)) ",
-            soci::use(sender_user_id),
-            soci::use(sender_user_id),
-            soci::use(group_id),
-            soci::use(new_group_msg->sender_msg_id()),
-
-            soci::use(group_id),
-            soci::use(new_group_msg->message()),
-            soci::use(new_group_msg->client_time()),
-            soci::use(new_group_msg->msg_time());
-
     for (int i = 0, size = new_group_msg->user_and_msgids_size(); i < size; ++i){
       // TODO each db inserts all once
       const auto& user_and_msgid = new_group_msg->user_and_msgids(i);
       auto pool = ChooseDatabase(user_and_msgid.user_id());
       soci::session sql(*pool);
-      sql << "INSERT INTO msssages(user_id, peer_id, msg_id, group_id, message, client_send, msg_time) "
+      sql << "INSERT INTO messages(user_id, sender, receiver, msg_id, group_id, message, client_time, msg_time) "
               "VALUES (:user_id, :sender, :receiver, :msg_id, :group_id, :message, FROM_UNIXTIME(:client_send), FROM_UNIXTIME(:msg_time)) ",
               soci::use(user_and_msgid.user_id()),
               soci::use(sender_user_id),
@@ -283,7 +257,7 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
               soci::use(new_group_msg->msg_time());
     }
   }
-  catch (const soci::soci_error& err) {
+  catch (const std::exception& err) {
     LOG(ERROR) << "Fail to insert into messages. " << err.what();
     return;
   }
@@ -294,30 +268,6 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
   user_last_send_data.set_msg_time(new_group_msg->msg_time());
   user_last_send_data.set_msg_id(new_group_msg->sender_msg_id());
   SetUserLastSendData_(&user_last_send_data);
-}
-
-void DbproxyServiceImpl::GetGroupMember(google::protobuf::RpcController* controller,
-                                        const GroupId* new_msg,
-                                        UserIds* reply,
-                                        google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-  try {
-    soci::session sql(db_group_members_connect_pool_);
-    soci::rowset<soci::row> rs =
-        (sql.prepare << "SELECT user_id, user_name FROM group_members WHERE group_id = :group_id;",
-            soci::use(new_msg->group_id()));
-
-    for (soci::rowset<soci::row>::iterator it = rs.begin(); it != rs.end(); ++it) {
-      const auto& row = *it;
-      reply->add_user_id(row.get<user_id_t>(0));
-    }
-  }
-  catch (const soci::soci_error& err) {
-    LOG(ERROR) << "Fail to select from group_members"
-               << " group_id=" << new_msg->group_id()
-               << ". " << err.what();
-  }
 }
 
 void DbproxyServiceImpl::SetUserLastSendData_(const UserLastSendData* user_last_send_data){
@@ -392,7 +342,6 @@ void DbproxyServiceImpl::GetUserLastSendData(google::protobuf::RpcController* co
       auto pool = ChooseDatabase(user_id);
       soci::session sql(*pool);
       soci::indicator ind;
-      // get data from MySQL
       sql << "SELECT msg_id, UNIX_TIMESTAMP(client_time), UNIX_TIMESTAMP(msg_time) "
              "FROM messages "
              "WHERE user_id = :user_id and sender = :sender and "
@@ -428,7 +377,6 @@ void DbproxyServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
   const user_id_t user_id = msg_range->user_id();
   auto pool = ChooseDatabase(user_id);
   soci::session sql(*pool);
-  // soci::indicator ind;
   try {
     soci::rowset<soci::row> rs = (sql.prepare << "SELECT sender, receiver, msg_id, group_id, message, "
                                                   "UNIX_TIMESTAMP(client_time), UNIX_TIMESTAMP(msg_time) "
@@ -437,9 +385,6 @@ void DbproxyServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
                                                 soci::use(msg_range->user_id()),
                                                 soci::use(msg_range->start_msg_id()),
                                                 soci::use(msg_range->end_msg_id()));
-    DLOG_IF(INFO, rs.begin() != rs.end()) << "Select return nil. user_id=" << msg_range->user_id()
-                                          << "start_msg_id=" << msg_range->start_msg_id()
-                                          << "end_msg_id=" << msg_range->end_msg_id();
 
     for (auto it = rs.begin(); it != rs.end(); ++it) {
       soci::row const& row = *it;
@@ -467,6 +412,9 @@ void DbproxyServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
   }
+  DLOG_IF(INFO, msgs->msg_size() == 0) << "Select return nil. user_id=" << msg_range->user_id()
+                                       << "start_msg_id=" << msg_range->start_msg_id()
+                                       << "end_msg_id=" << msg_range->end_msg_id();
 }
 
 void DbproxyServiceImpl::GetFriends(google::protobuf::RpcController* controller,
@@ -484,7 +432,7 @@ void DbproxyServiceImpl::GetFriends(google::protobuf::RpcController* controller,
                                                  "FROM friends "
                                                  "WHERE user_id = :user_id AND deleted = 0",
                                                 soci::use(user_id));
-    DLOG_IF(INFO, rs.begin() != rs.end()) << "Select friends return nil. user_id=" << user_id;
+    DLOG(INFO) << "sql=" << sql.get_query();
 
     for (auto it = rs.begin(); it != rs.end(); ++it) {
       soci::row const& row = *it;
@@ -500,6 +448,7 @@ void DbproxyServiceImpl::GetFriends(google::protobuf::RpcController* controller,
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
   }
+  DLOG_IF(INFO, user_infos->user_info_size() == 0) << "Select friends return nil. user_id=" << user_id;
 }
 
 void DbproxyServiceImpl::GetGroups(google::protobuf::RpcController* controller,
@@ -517,7 +466,7 @@ void DbproxyServiceImpl::GetGroups(google::protobuf::RpcController* controller,
                                                  "FROM group_members "
                                                  "WHERE user_id = :user_id",
                                                 soci::use(user_id));
-    DLOG_IF(INFO, rs.begin() != rs.end()) << "Select group_members return nil. user_id=" << user_id;
+    DLOG(INFO) << "sql=" << sql.get_query();
 
     for (auto it = rs.begin(); it != rs.end(); ++it) {
       soci::row const& row = *it;
@@ -533,6 +482,7 @@ void DbproxyServiceImpl::GetGroups(google::protobuf::RpcController* controller,
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
   }
+  DLOG_IF(INFO, group_infos->group_info_size() == 0) << "Select group_members return nil. user_id=" << user_id;
 }
 
 void DbproxyServiceImpl::GetGroupMembers(google::protobuf::RpcController* controller,
@@ -544,13 +494,12 @@ void DbproxyServiceImpl::GetGroupMembers(google::protobuf::RpcController* contro
 
   auto pool = ChooseDatabase(group_id);
   soci::session sql(*pool);
-  // soci::indicator ind;
   try {
     soci::rowset<soci::row> rs = (sql.prepare << "SELECT user_id, user_name "
                                                  "FROM group_members "
                                                  "WHERE group_id = :group_id",
                                                 soci::use(group_id));
-    DLOG_IF(INFO, rs.begin() != rs.end()) << "Select group_members return nil. group_id=" << group_id;
+    DLOG(INFO) << "sql=" << sql.get_query();
 
     for (auto it = rs.begin(); it != rs.end(); ++it) {
       soci::row const& row = *it;
@@ -566,7 +515,7 @@ void DbproxyServiceImpl::GetGroupMembers(google::protobuf::RpcController* contro
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
   }
+  DLOG_IF(INFO, user_infos->user_info_size() == 0) << "Select group_members return nil. group_id=" << group_id;
 }
 
 }  // namespace tinyim
-

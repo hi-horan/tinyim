@@ -45,7 +45,7 @@ service DbproxyService {
     rpc SaveGroupMsg(NewGroupMsg) returns (Reply);
     // rpc SaveGroupMsg() returns (Reply);
     // rpc GetMsg(UserId) returns (Msg);
-    rpc GetGroupMember(GroupId) returns (UserIds);
+    // rpc GetGroupMember(GroupId) returns (UserIds);
     rpc GetLastGroupMsgs(UserIdAndGroupId) returns (Msgs);
     rpc GetPrivateMsgs(PairUserId) returns (Msgs);
     rpc GetUserMsgs(PairMsgId) returns (Msgs);
@@ -55,8 +55,6 @@ service DbproxyService {
 
     rpc GetLastMsgId(UserId) returns (MsgId);
 
-    // TODO get and set should atomic for idempotent
-    // rpc CasUserLastSendData(UserLastSendData) returns (Pong);
     rpc SetUserLastSendData(UserLastSendData) returns (Pong);
     rpc GetUserLastSendData(UserId) returns (UserLastSendData);
 

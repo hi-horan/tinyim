@@ -10,7 +10,7 @@
 #include <glog/logging.h>
 
 DEFINE_string(leveldb_file, "./data/data.db", "Leveldb db file");
-DEFINE_int64(each_gen_id_num, 1024, "Each generate id num from db"); // must integer power of 2
+DEFINE_int64(each_gen_id_num, 1024, "Each generate id num from db");
 DEFINE_int64(hash_bucket_num, 12, "Each generate id num from db");
 
 namespace tinyim{

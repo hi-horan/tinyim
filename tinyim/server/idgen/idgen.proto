@@ -9,7 +9,7 @@ message UserAndIdNum {
 }
 
 message MsgIdRequest {
-    repeated UserAndIdNum user_ids = 1;
+    repeated UserAndIdNum user_ids = 1;  // first one is sender
 }
 
 message MsgIds {

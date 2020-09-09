@@ -58,35 +58,8 @@ class LogicServiceImpl : public tinyim::LogicService {
                        const GroupId* group_id,
                        UserInfos* user_infos,
                        google::protobuf::Closure* done) override;
-
-  // butil::Status ClearUserData(user_id_t user_id);
-
-  // butil::Status PushClosureAndReply(user_id_t user_id,
-                                    // google::protobuf::Closure* done,
-                                    // PullReply* reply,
-                                    // brpc::Controller* cntl);
-
-  // butil::Status PopClosureAndReply(user_id_t user_id,
-                                   // google::protobuf::Closure** done,
-                                   // PullReply** reply,
-                                   // brpc::Controller** cntl);
-  // void ClearClosureAndReply();
-  // void Clear();
  private:
 
-  // struct Data{
-    // google::protobuf::Closure* done;
-    // PullReply* reply;
-    // brpc::Controller* cntl;
-
-    // // bthread_timer_t heartbeat_timeout_id;
-    // // HeartBeatTimeoutArg* hbarg;
-
-    // // TODO pull timeout
-  // };
-  // enum { kBucketNum = 16 };
-  // std::mutex mutex_[kBucketNum];
-  // std::unordered_map<user_id_t, Data> id_map_[kBucketNum];
   static void* SendtoPeers(void* args);
 
   brpc::Channel *id_channel_;
@@ -98,6 +71,5 @@ class LogicServiceImpl : public tinyim::LogicService {
 };
 
 }  // namespace tinyim
-
 
 #endif  // TINYIM_LOGIC_LOGIC_SERVICE_H_

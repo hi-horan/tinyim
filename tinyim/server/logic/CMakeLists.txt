@@ -24,7 +24,6 @@ add_executable(${PROJECT_NAME}
     logic_service.h
 )
 
-message("----------PROTOBUF_INCLUDE_DIRS: ${PROTOBUF_INCLUDE_DIRS}")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROTOBUF_INCLUDE_DIRS}

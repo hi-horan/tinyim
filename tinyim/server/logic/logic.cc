@@ -65,7 +65,9 @@ int main(int argc, char* argv[]) {
   }
   // access_service_impl.Clear();
 
+  DLOG(INFO) << "Stopping";
   server.RunUntilAskedToQuit();
+  DLOG(INFO) << "Stopping";
 
   return 0;
 }

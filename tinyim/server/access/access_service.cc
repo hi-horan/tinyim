@@ -8,6 +8,7 @@
 
 #include <brpc/channel.h>
 #include <bthread/bthread.h>
+#include <butil/crc32c.h>  // brpc
 #include <butil/time.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -30,6 +31,10 @@ static void UserHeartBeatTimeoutHeadler(void* arg){
   tinyim::user_id_t user_id = parg->user_id;
   auto access_service_impl = parg->access_service_impl;
   access_service_impl->ClearUserData(user_id);
+}
+
+uint32_t Hash(int64_t id){
+  return butil::crc32c::Value(reinterpret_cast<const char*>(&id), sizeof(id));
 }
 }
 
@@ -131,7 +136,10 @@ void AccessServiceImpl::SendMsg(google::protobuf::RpcController* controller,
   logic_cntl.set_log_id(cntl->log_id());
   MsgReply logic_reply;
   // XXX consistent hash use peer_id
-  logic_cntl.set_request_code(new_msg->peer_id());
+  // logic_cntl.set_request_code(new_msg->peer_id());
+  uint32_t code = Hash(new_msg->peer_id());
+  DLOG(INFO) << "peer_id=" << new_msg->peer_id() <<  " code=" << code;
+  logic_cntl.set_request_code(code);
 
   logic_stub.SendMsg(&logic_cntl, new_msg, &logic_reply, nullptr);
   if (logic_cntl.Failed()) {
@@ -195,7 +203,7 @@ void AccessServiceImpl::SendtoAccess(google::protobuf::RpcController* controller
     *msgs->add_msg() = *msg;
   }
   else {
-    DLOG(INFO) << "client_done = nullptr";
+    DLOG(INFO) << "user_id=" << user_id << " client_done = nullptr";
   }
 }
 
@@ -394,11 +402,11 @@ void AccessServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
   brpc::Controller logic_cntl;
   logic_cntl.set_log_id(cntl->log_id());
   // XXX consistent hash use id
-  logic_cntl.set_request_code(msg_range->user_id());
+  logic_cntl.set_request_code(Hash(msg_range->user_id()));
 
   logic_stub.GetMsgs(&logic_cntl, msg_range, msgs, nullptr);
   if (logic_cntl.Failed()) {
-      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      DLOG(ERROR) << "Fail to call GetMsgs. " << logic_cntl.ErrorText();
       cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
   }
 }
@@ -414,11 +422,11 @@ void AccessServiceImpl::GetFriends(google::protobuf::RpcController* controller,
   brpc::Controller logic_cntl;
   logic_cntl.set_log_id(cntl->log_id());
   // XXX consistent hash use id
-  logic_cntl.set_request_code(user_id->user_id());
+  logic_cntl.set_request_code(Hash(user_id->user_id()));
 
   logic_stub.GetFriends(&logic_cntl, user_id, user_infos, nullptr);
   if (logic_cntl.Failed()) {
-      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      DLOG(ERROR) << "Fail to call GetFriends. " << logic_cntl.ErrorText();
       cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
   }
 }
@@ -434,11 +442,11 @@ void AccessServiceImpl::GetGroups(google::protobuf::RpcController* controller,
   brpc::Controller logic_cntl;
   logic_cntl.set_log_id(cntl->log_id());
   // XXX consistent hash use id
-  logic_cntl.set_request_code(user_id->user_id());
+  logic_cntl.set_request_code(Hash(user_id->user_id()));
 
   logic_stub.GetGroups(&logic_cntl, user_id, group_infos, nullptr);
   if (logic_cntl.Failed()) {
-      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      DLOG(ERROR) << "Fail to call GetGroups. " << logic_cntl.ErrorText();
       cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
   }
 }
@@ -454,11 +462,11 @@ void AccessServiceImpl::GetGroupMembers(google::protobuf::RpcController* control
   brpc::Controller logic_cntl;
   logic_cntl.set_log_id(cntl->log_id());
   // XXX consistent hash use id
-  logic_cntl.set_request_code(group_id->group_id());
+  logic_cntl.set_request_code(Hash(group_id->group_id()));
 
   logic_stub.GetGroupMembers(&logic_cntl, group_id, user_infos, nullptr);
   if (logic_cntl.Failed()) {
-      DLOG(ERROR) << "Fail to call SendMsg. " << logic_cntl.ErrorText();
+      DLOG(ERROR) << "Fail to call GetGroupMembers. " << logic_cntl.ErrorText();
       cntl->SetFailed(logic_cntl.ErrorCode(), logic_cntl.ErrorText().c_str());
   }
 }

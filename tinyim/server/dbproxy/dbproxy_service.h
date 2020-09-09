@@ -47,11 +47,6 @@ class DbproxyServiceImpl : public DbproxyService {
                     Reply* reply,
                     google::protobuf::Closure* done) override;
 
-  void GetGroupMember(google::protobuf::RpcController* controller,
-                      const GroupId* new_msg,
-                      UserIds* reply,
-                      google::protobuf::Closure* done) override;
-
   // user_last_send save in redis like `user_idu:[msg_id,client_time,msg_time]'
   void SetUserLastSendData(google::protobuf::RpcController* controller,
                            const UserLastSendData*,
