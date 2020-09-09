@@ -22,7 +22,6 @@ add_executable(${PROJECT_NAME}
     client.cc
 )
 
-message("--------------------------cmake current binary dir=${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_SOURCE_DIR}/tinyim

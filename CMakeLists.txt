@@ -13,7 +13,7 @@ find_package(gflags REQUIRED)
 find_package(leveldb REQUIRED)
 find_package(OpenSSL REQUIRED)
 # find_package(toml11 REQUIRED)    # for reading config file
-# find_package(RapidJSON REQUIRED) # for sso
+# find_package(RapidJSON REQUIRED)
 # find_package(hiredis REQUIRED)
 find_package(MySQL REQUIRED)
 find_package(Soci REQUIRED)

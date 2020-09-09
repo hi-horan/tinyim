@@ -83,7 +83,8 @@ class DbproxyServiceImpl : public DbproxyService {
                        UserInfos* user_infos,
                        google::protobuf::Closure* done) override;
  private:
-  void SetUserLastSendData_(const UserLastSendData* user_last_send_data);
+  void SetUserLastSendData_(brpc::Controller* cntl,
+                            const UserLastSendData* user_last_send_data);
 
 
   soci::connection_pool* ChooseDatabase(user_id_t user_id){

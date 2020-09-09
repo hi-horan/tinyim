@@ -58,7 +58,7 @@ void DbproxyServiceImpl::AuthAndSaveSession(google::protobuf::RpcController* con
                                             Pong* pong,
                                             google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   // TODO 1. get password from MySQL and check
 
   // 2. save session in redis
@@ -71,6 +71,7 @@ void DbproxyServiceImpl::AuthAndSaveSession(google::protobuf::RpcController* con
   redis_channel_.CallMethod(NULL, &cntl, &request, &response, NULL);
   if (cntl.Failed()) {
     LOG(ERROR) << "Fail to access redis, " << cntl.ErrorText();
+    pcntl->SetFailed(cntl.ErrorCode(), cntl.ErrorText().c_str());
   } else {
     LOG(INFO) << "redis reply=" << response;
   }
@@ -81,6 +82,7 @@ void DbproxyServiceImpl::GetSessions(google::protobuf::RpcController* controller
                                      Sessions* sessions,
                                      google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   std::ostringstream oss;
   oss << "MGET ";
   int size = user_ids->user_id_size();
@@ -97,6 +99,7 @@ void DbproxyServiceImpl::GetSessions(google::protobuf::RpcController* controller
   redis_channel_.CallMethod(NULL, &cntl, &request, &response, NULL);
   if (cntl.Failed()) {
     LOG(ERROR) << "Fail to access redis, " << cntl.ErrorText();
+    pcntl->SetFailed(cntl.ErrorCode(), cntl.ErrorText().c_str());
   } else {
     DLOG(INFO) << "redis reply(0) size=" << response.reply(0).size();
     DLOG(INFO) << "redis reply=" << response;
@@ -126,11 +129,12 @@ void DbproxyServiceImpl::GetSessions(google::protobuf::RpcController* controller
   }
 }
 
-void DbproxyServiceImpl::ClearSession(google::protobuf::RpcController*,
+void DbproxyServiceImpl::ClearSession(google::protobuf::RpcController* controller,
                                       const UserId* user_id,
                                       Pong*,
                                       google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   brpc::RedisRequest request;
   if (!request.AddCommand("DEL {%ld}a", user_id->user_id())) {
     LOG(ERROR) << "Fail to del command";
@@ -140,6 +144,7 @@ void DbproxyServiceImpl::ClearSession(google::protobuf::RpcController*,
   redis_channel_.CallMethod(NULL, &cntl, &request, &response, NULL);
   if (cntl.Failed()) {
     LOG(ERROR) << "Fail to del " << user_id->user_id() << ". " << cntl.ErrorText();
+    pcntl->SetFailed(cntl.ErrorCode(), cntl.ErrorText().c_str());
   } else {
     DLOG(INFO) << "Redis reply=" << response;
   }
@@ -150,7 +155,7 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
                                         Reply* reply,
                                         google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
   try {
     auto pool = ChooseDatabase(new_msg->sender());
     auto peer_pool = ChooseDatabase(new_msg->receiver());
@@ -219,6 +224,7 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
                 << " receiver=" << new_msg->receiver()
                 << " msg_id=" << new_msg->sender_msg_id()
                 << ". " << err.what();
+    cntl->SetFailed(EINVAL, "Fail to insert into messages.");
     return;
   }
 
@@ -227,7 +233,7 @@ void DbproxyServiceImpl::SavePrivateMsg(google::protobuf::RpcController* control
   user_last_send_data.set_client_time(new_msg->client_time());
   user_last_send_data.set_msg_time(new_msg->msg_time());
   user_last_send_data.set_msg_id(new_msg->sender_msg_id());
-  SetUserLastSendData_(&user_last_send_data);
+  SetUserLastSendData_(cntl, &user_last_send_data);
 }
 
 void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controller,
@@ -235,7 +241,7 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
                                       Reply* reply,
                                       google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+  brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
   const user_id_t sender_user_id = new_group_msg->sender_user_id();
   const group_id_t group_id = new_group_msg->group_id();
   try {
@@ -259,6 +265,7 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
   }
   catch (const std::exception& err) {
     LOG(ERROR) << "Fail to insert into messages. " << err.what();
+    cntl->SetFailed(EINVAL, "Fail to insert into messages.");
     return;
   }
 
@@ -267,10 +274,11 @@ void DbproxyServiceImpl::SaveGroupMsg(google::protobuf::RpcController* controlle
   user_last_send_data.set_client_time(new_group_msg->client_time());
   user_last_send_data.set_msg_time(new_group_msg->msg_time());
   user_last_send_data.set_msg_id(new_group_msg->sender_msg_id());
-  SetUserLastSendData_(&user_last_send_data);
+  SetUserLastSendData_(cntl, &user_last_send_data);
 }
 
-void DbproxyServiceImpl::SetUserLastSendData_(const UserLastSendData* user_last_send_data){
+void DbproxyServiceImpl::SetUserLastSendData_(brpc::Controller* pcntl,
+                                              const UserLastSendData* user_last_send_data){
   const char* cmd =
     "eval \""
     "local a = redis.call('GET', KEYS[1])"
@@ -296,6 +304,7 @@ void DbproxyServiceImpl::SetUserLastSendData_(const UserLastSendData* user_last_
   redis_channel_.CallMethod(NULL, &cntl, &request, &response, NULL);
   if (cntl.Failed()) {
     LOG(ERROR) << "Fail to access redis, " << cntl.ErrorText();
+    pcntl->SetFailed(EINVAL, "Fail to set user last send data.");
   } else {
     LOG(INFO) << "redis reply=" << response;
   }
@@ -306,9 +315,9 @@ void DbproxyServiceImpl::SetUserLastSendData(google::protobuf::RpcController* co
                                              Pong*,
                                              google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
 
-  SetUserLastSendData_(user_last_send_data);
+  SetUserLastSendData_(pcntl, user_last_send_data);
 }
 
 void DbproxyServiceImpl::GetUserLastSendData(google::protobuf::RpcController* controller,
@@ -316,7 +325,7 @@ void DbproxyServiceImpl::GetUserLastSendData(google::protobuf::RpcController* co
                                              UserLastSendData* user_last_send_data,
                                              google::protobuf::Closure* done){
   brpc::ClosureGuard done_guard(done);
-  // brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
 
   const user_id_t user_id = userid->user_id();
   brpc::RedisRequest request;
@@ -328,6 +337,7 @@ void DbproxyServiceImpl::GetUserLastSendData(google::protobuf::RpcController* co
   redis_channel_.CallMethod(NULL, &cntl, &request, &response, NULL);
   if (cntl.Failed()) {
     LOG(ERROR) << "Fail to access redis, " << cntl.ErrorText();
+    pcntl->SetFailed(EINVAL, "Fail to get data from redis.");
   } else {
     LOG(INFO) << "redis reply=" << response;
     int64_t msg_id = 0;
@@ -339,27 +349,34 @@ void DbproxyServiceImpl::GetUserLastSendData(google::protobuf::RpcController* co
                                                        &msg_time);
     }
     else{
-      auto pool = ChooseDatabase(user_id);
-      soci::session sql(*pool);
-      soci::indicator ind;
-      sql << "SELECT msg_id, UNIX_TIMESTAMP(client_time), UNIX_TIMESTAMP(msg_time) "
-             "FROM messages "
-             "WHERE user_id = :user_id and sender = :sender and "
-               "client_time = (SELECT MAX(client_time) "
-                               "FROM messages "
-                               "WHERE user_id = :user_id2 AND sender = :sender2);",
-             soci::into(msg_id, ind),
-             soci::into(client_time),
-             soci::into(msg_time),
+      try {
+        auto pool = ChooseDatabase(user_id);
+        soci::session sql(*pool);
+        soci::indicator ind;
+        sql << "SELECT msg_id, UNIX_TIMESTAMP(client_time), UNIX_TIMESTAMP(msg_time) "
+              "FROM messages "
+              "WHERE user_id = :user_id and sender = :sender and "
+                "client_time = (SELECT MAX(client_time) "
+                                "FROM messages "
+                                "WHERE user_id = :user_id2 AND sender = :sender2);",
+              soci::into(msg_id, ind),
+              soci::into(client_time),
+              soci::into(msg_time),
 
-             soci::use(user_id),
-             soci::use(user_id),
-             soci::use(user_id),
-             soci::use(user_id);
-      if (ind != soci::indicator::i_ok) {
-        msg_id = 0;
-        client_time = 0;
-        msg_time = 0;
+              soci::use(user_id),
+              soci::use(user_id),
+              soci::use(user_id),
+              soci::use(user_id);
+        if (ind != soci::indicator::i_ok) {
+          msg_id = 0;
+          client_time = 0;
+          msg_time = 0;
+        }
+      }
+      catch (const std::exception& err) {
+        LOG(ERROR) << "Fail to insert into messages. " << err.what();
+        pcntl->SetFailed(EINVAL, "Fail to select from messages.");
+        return;
       }
     }
     user_last_send_data->set_msg_id(msg_id);
@@ -373,6 +390,7 @@ void DbproxyServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
                                  Msgs* msgs,
                                  google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
 
   const user_id_t user_id = msg_range->user_id();
   auto pool = ChooseDatabase(user_id);
@@ -411,6 +429,7 @@ void DbproxyServiceImpl::GetMsgs(google::protobuf::RpcController* controller,
   }
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
+    pcntl->SetFailed(EINVAL, "Fail to select from messages.");
   }
   DLOG_IF(INFO, msgs->msg_size() == 0) << "Select return nil. user_id=" << msg_range->user_id()
                                        << "start_msg_id=" << msg_range->start_msg_id()
@@ -422,6 +441,7 @@ void DbproxyServiceImpl::GetFriends(google::protobuf::RpcController* controller,
                                    UserInfos* user_infos,
                                    google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   const user_id_t user_id = userid->user_id();
 
   auto pool = ChooseDatabase(user_id);
@@ -447,6 +467,7 @@ void DbproxyServiceImpl::GetFriends(google::protobuf::RpcController* controller,
   }
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
+    pcntl->SetFailed(EINVAL, "Fail to select from friends.");
   }
   DLOG_IF(INFO, user_infos->user_info_size() == 0) << "Select friends return nil. user_id=" << user_id;
 }
@@ -456,6 +477,7 @@ void DbproxyServiceImpl::GetGroups(google::protobuf::RpcController* controller,
                                    GroupInfos* group_infos,
                                    google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   const user_id_t user_id = userid->user_id();
 
   auto pool = ChooseDatabase(user_id);
@@ -481,6 +503,7 @@ void DbproxyServiceImpl::GetGroups(google::protobuf::RpcController* controller,
   }
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
+    pcntl->SetFailed(EINVAL, "Fail to select from group_members.");
   }
   DLOG_IF(INFO, group_infos->group_info_size() == 0) << "Select group_members return nil. user_id=" << user_id;
 }
@@ -490,6 +513,7 @@ void DbproxyServiceImpl::GetGroupMembers(google::protobuf::RpcController* contro
                                          UserInfos* user_infos,
                                          google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
+  brpc::Controller* pcntl = static_cast<brpc::Controller*>(controller);
   const group_id_t group_id = groupid->group_id();
 
   auto pool = ChooseDatabase(group_id);
@@ -514,6 +538,7 @@ void DbproxyServiceImpl::GetGroupMembers(google::protobuf::RpcController* contro
   }
   catch (const soci::soci_error& err) {
     LOG(ERROR) << err.what();
+    pcntl->SetFailed(EINVAL, "Fail to select from group_members.");
   }
   DLOG_IF(INFO, user_infos->user_info_size() == 0) << "Select group_members return nil. group_id=" << group_id;
 }
