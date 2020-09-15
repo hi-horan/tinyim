@@ -5,11 +5,11 @@
 
 ## 架构图
 
-<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/architecture-001.jpg" width="800" height="800" alt="架构图"/>
+<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/architecture-001.jpg" alt="架构图"/>
 
 ## 时序图
 
-<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/Timing-diagram.jpg" width="800" height="800" alt="时序图"/>
+<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/Timing-diagram.jpg" width="1000" height="500" alt="时序图"/>
 
 ## client
 
