@@ -3,6 +3,14 @@
 
 支持用户间单聊，群聊, 用brpc通讯
 
+## 架构图
+
+<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/architecture-001.jpg" width="800" height="800" alt="架构图"/>
+
+## 时序图
+
+<img src="https://github.com/Horan-G/tinyim/raw/master/docs/images/Timing-diagram.jpg" width="800" height="800" alt="时序图"/>
+
 ## client
 
 客户端与服务端保持长连接，且客户端空闲时会发送心跳，保证客户端能及时收到消息。
@@ -51,9 +59,9 @@ access address save in redis like '{user_id}a:192.168.0.2:8000'
 ### run before
 export LD_PRELOAD=/lib/libasan.so
 
-
 ### port
 access 5000
 logic 6000
 dbproxy 7000
 idgen 8000
+
