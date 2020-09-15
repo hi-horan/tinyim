@@ -8,7 +8,7 @@
 
 #include <brpc/channel.h>
 #include <bthread/bthread.h>
-#include <butil/crc32c.h>  // brpc
+#include <butil/crc32c.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>

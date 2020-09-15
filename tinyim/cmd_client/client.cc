@@ -221,7 +221,6 @@ int main(int argc, char* argv[]) {
     std::cout << "Calling Signin" << std::endl;
     brpc::Controller cntl;
     tinyim::AccessService_Stub stub(&channel);
-    // TODO should be async
     stub.SignIn(&cntl, &signin_data, &pong, nullptr);
     if (cntl.Failed()){
       std::cout << "Fail to call Signin. " << cntl.ErrorText() << std::endl;
