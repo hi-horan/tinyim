@@ -54,6 +54,7 @@ TODO 当前为了消息不丢失,将所有消息保存到数据库后才向上�
 要存储服务端成功处理的发送者最新的一条消息时间, 后续只需处理比当前更新的消息，当与MySQL不一致时，说明落后于MySQL, 此时logic会分配msg_id,并发送数据到dbproxy,dbproxy存数据时会发现数据已存在，则插入失败，即使这条重复消息发送到了接收者，接收者会根据sender，及send_time去重,所以缓存可以接受最终一致性
 
 user_last_send save in redis like '{user_id}u:[msg_id,client_time,msg_time]'
+
 access address save in redis like '{user_id}a:192.168.0.2:8000'
 
 ### run before
